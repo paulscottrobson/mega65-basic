@@ -7,6 +7,9 @@
 #		Author : 	Paul Robson (paul@robsons.org.uk)
 #
 # *******************************************************************************************
+
+import random,re
+
 # *******************************************************************************************
 #
 #		This is the Python version of the floating point routines, which can be
@@ -24,7 +27,6 @@
 #
 # *******************************************************************************************
 
-import random
 
 class Float(object):
 	#
@@ -174,7 +176,7 @@ class Float(object):
 	def addFloat(self,fp):
 		assert self.type == Float.FLOAT and fp.type == Float.FLOAT
 		if self.sign == 0: 									# worker is designed for +ve values.
-			return self.addFloatWorker(f2)
+			return self.addFloatWorker(fp)
 		self.sign ^= 0xFF 									# flip both signs
 		fp.sign ^= 0xFF
 		self.addFloatWorker(fp)								# do the same calculation.
@@ -270,6 +272,18 @@ class Float(object):
 	def convertToString(self):
 		assert self.type == Float.FLOAT 					# float in ?
 		#
+		if abs(self.exponent) > 30:							# exponent too large
+			displayExponent = 0 							# adjust it by mul/div by 10.
+			if self.exponent > 0:
+				while self.getFloatValue() >= 10.0:
+					displayExponent += 1
+					self.divFloat(Float().setInteger(10).toFloat())
+			else:
+				while self.getFloatValue() < 1.0:
+					self.mulFloat(Float().setInteger(10).toFloat())
+					displayExponent -= 1
+			return self.convertToString()+"e"+str(displayExponent)
+		#
 		s = "-" if self.sign else ""						# - sign if negative
 		ip = Float().copy(self).toInteger()					# get integer part
 		s  = s + str(abs(ip.getIntegerValue()))		
@@ -298,23 +312,25 @@ class Float(object):
 			sign = -1
 			s = s[1:]
 		#
-		dpCount = None
 		while s != "" and s[0] >= '0' and s[0] <= '9':		# input first bit as an integer
 			self.value = self.value * 10 + int(s[0])
+			assert self.value < 0x100000000,"Overflow"
 			s = s[1:]
-			if dpCount is not None:
-				dpCount *= 10
-			if s.startswith(".") and dpCount is None:
-				dpCount = 1
-				s = s[1:]
 		#
 		self.value = (self.value * sign) & 0xFFFFFFFF		# apply sign if provided
-		if dpCount is not None:								# floating ?
+		if s.startswith("."):								# decimal number.
+			s = s[1:]
 			self.toFloat()
-			print(self.toString())
-			self.divFloat(Float().setInteger(dpCount).toFloat())
-			print(self.toString())
+			scalar = Float().setInteger(1).toFloat()
+			while s != "" and s[0] >= '0' and s[0] <= '9':
+				scalar.divFloat(Float().setInteger(10).toFloat())
+				f1 = Float().setInteger(int(s[0])).toFloat().mulFloat(scalar)
+				self.addFloat(f1)
+				s = s[1:]
 		#
+		m = re.match("^[eE](\-?)(\d+)(.*)",s) 			# exponent format ?
+		#
+
 		return self
 
 Float.INTEGER = 0x00										# type values.
@@ -325,16 +341,15 @@ Float.ISIGN = 0x80000000 									# various constants.
 Float.IMASK = 0xFFFFFFFF
 
 if __name__ == "__main__":
-	s = "-44123318.2	x"
-	f = Float().convertFromString(s)
+	s = "0.000000021471"
+	#s = "234678912"
+	print(s,float(s)*float(s))
+	f = Float().convertFromString(s).toFloat()
+	print(f.toString())
+	f1 = Float().copy(f)
+	f.mulFloat(f1)
 	print(f.toString())
 	print(f.convertToString())
-
-	f = Float().setInteger(22).toFloat()
-	f.divFloat(Float().setInteger(7).toFloat())
-	print(f.toString())
-	print(f.convertToString())
-
 #
 #	L 		Load a number into B (follows in [])
 #	M 		Copy B to A
@@ -345,3 +360,4 @@ if __name__ == "__main__":
 #	W 		Write A out.
 #	; 		Ignore rest of line.
 #
+
