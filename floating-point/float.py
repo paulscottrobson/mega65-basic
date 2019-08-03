@@ -114,6 +114,7 @@ class Float(object):
 		if self.zero:										# special case of zero.
 			self.value = 0 
 			return self
+		#
 		assert self.exponent <= 32,"Overflow"				# overflow error
 		while self.exponent < 32:							# need to denormalise to exponent 32
 			self.value >>= 1
@@ -272,7 +273,7 @@ class Float(object):
 		s = "-" if self.sign else ""						# - sign if negative
 		ip = Float().copy(self).toInteger()					# get integer part
 		s  = s + str(abs(ip.getIntegerValue()))		
-		placeCount = 12-len(s)								# don't print silly things.
+		placeCount = 10-len(s)								# don't print silly things.
 		self.fractionalPart()
 		self.sign = 0x00 									# never show any signs.
 		if self.zero != 0:									# fractional zero, no decimals		
@@ -284,7 +285,37 @@ class Float(object):
 			s = s + str(Float().copy(self).toInteger().getIntegerValue())
 			self.fractionalPart()
 			placeCount -= 1
+		while s.endswith("0"):								# remove trailing zeros
+			s = s[:-1]
 		return s
+	#
+	#		Convert number string to float/int.
+	#
+	def convertFromString(self,s):
+		self.setInteger(0)
+		sign = 1 											# sign value.
+		if s.startswith("-"):								# handle -ve numbers.
+			sign = -1
+			s = s[1:]
+		#
+		dpCount = None
+		while s != "" and s[0] >= '0' and s[0] <= '9':		# input first bit as an integer
+			self.value = self.value * 10 + int(s[0])
+			s = s[1:]
+			if dpCount is not None:
+				dpCount *= 10
+			if s.startswith(".") and dpCount is None:
+				dpCount = 1
+				s = s[1:]
+		#
+		self.value = (self.value * sign) & 0xFFFFFFFF		# apply sign if provided
+		if dpCount is not None:								# floating ?
+			self.toFloat()
+			print(self.toString())
+			self.divFloat(Float().setInteger(dpCount).toFloat())
+			print(self.toString())
+		#
+		return self
 
 Float.INTEGER = 0x00										# type values.
 Float.FLOAT = 0x80
@@ -293,28 +324,24 @@ Float.STRING = 0x40
 Float.ISIGN = 0x80000000 									# various constants.
 Float.IMASK = 0xFFFFFFFF
 
-
-
-
-
-
-
-
 if __name__ == "__main__":
-	random.seed(42)
-	iList = [0,1,2,6,32,-1,-3,-15] 							# list of integers
-	for i in range(0,10):
-		iList.append(random.randint(-33333,33333))
-	for n1 in range(0,len(iList)):
-		for n2 in range(0,len(iList)):
-			if iList[n2] != 0:				
-				result = str(1.0 * iList[n1] / iList[n2])
-				#print("str({2}) = \"{2}\"".format(iList[n1],iList[n2],result))
-				f1 = Float().setInteger(iList[n1]).toFloat()
-				f2 = Float().setInteger(iList[n2]).toFloat()
-				f1.divFloat(f2)
-				s = f1.convertToString()
-				print("RR",s,result)
-				if abs(float(s)-float(result)) > 0.00001:
-					print(" *** FAIL ***",iList[n1],iList[n2],float(s),float(result))
-					assert False
+	s = "-44123318.2	x"
+	f = Float().convertFromString(s)
+	print(f.toString())
+	print(f.convertToString())
+
+	f = Float().setInteger(22).toFloat()
+	f.divFloat(Float().setInteger(7).toFloat())
+	print(f.toString())
+	print(f.convertToString())
+
+#
+#	L 		Load a number into B (follows in [])
+#	M 		Copy B to A
+#	F 		Fractional(A) -> A
+#	I 		Integer(A) -> A
+#	+-*/	A = A <op> B
+#	Q 		Quit
+#	W 		Write A out.
+#	; 		Ignore rest of line.
+#
