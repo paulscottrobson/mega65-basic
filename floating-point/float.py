@@ -342,7 +342,7 @@ Float.IMASK = 0xFFFFFFFF
 
 if __name__ == "__main__":
 	s = "0.000000021471"
-	#s = "234678912"
+	s = "987654321"
 	print(s,float(s)*float(s))
 	f = Float().convertFromString(s).toFloat()
 	print(f.toString())
@@ -361,3 +361,4 @@ if __name__ == "__main__":
 #	; 		Ignore rest of line.
 #
 
+# TODO: Fix exponents on string being converted.
