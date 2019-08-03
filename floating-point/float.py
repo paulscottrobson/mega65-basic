@@ -240,6 +240,23 @@ class Float(object):
 		self.sign = self.sign ^ fp.sign 					# work out result sign.
 		self.normalize()									# and normalize 
 		return self
+	#
+	#		Fractional part (i.e. bit get if take off integer.)
+	#
+	def fractionalPart(self):
+		assert self.type == Float.FLOAT 					# float in ?
+		assert self.exponent <= 32,"Overflow"				# overflow error
+		if self.exponent < 0:								# already fractional
+			return self
+		#
+		for i in range(0,self.exponent): 					# clear exponent bits starting
+			mask = 0xFFFFFFFF ^ (0x80000000 >> i) 			# from the right hand side.
+			self.value &= mask						
+		#
+		if self.value == 0:									# if fractional part zero, return zero
+			self.zero = 0
+		self.normalize()
+		return self
 
 Float.INTEGER = 0x00										# type values.
 Float.FLOAT = 0x80
@@ -248,8 +265,15 @@ Float.STRING = 0x40
 Float.ISIGN = 0x80000000 									# various constants.
 Float.IMASK = 0xFFFFFFFF
 
-if __name__ == "__main__":
 
+
+
+
+
+
+
+if __name__ == "__main__":
+	random.seed(42)
 	iList = [0,1,2,6,32,-1,-3,-15] 							# list of integers
 	for i in range(0,10):
 		iList.append(random.randint(-33333,33333))
@@ -257,11 +281,12 @@ if __name__ == "__main__":
 		for n2 in range(0,len(iList)):
 			if iList[n2] != 0:
 				result = 1.0 * iList[n1] / iList[n2]
-				print("{0} / {1} = {2}".format(iList[n1],iList[n2],result))
+				result = result-int(result)
+				print("frac({0} / {1}) = {2}".format(iList[n1],iList[n2],result))
 				f1 = Float().setInteger(iList[n1]).toFloat()
 				f2 = Float().setInteger(iList[n2]).toFloat()
 				f1.divFloat(f2)
+				f1.fractionalPart()
 				if abs(f1.getFloatValue()-result) > 0.00001:
 					print(" *** FAIL ***",f1.getFloatValue(),result)
 					assert False
-					
