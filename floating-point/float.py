@@ -24,6 +24,8 @@
 #
 # *******************************************************************************************
 
+import random
+
 class Float(object):
 	#
 	#		Initialise number class. The real thing holds integer, float or string.
@@ -222,24 +224,44 @@ class Float(object):
 		if self.zero: 										# 0/n = n (if n is not zero)		
 			return self
 		#
+		self.exponent = self.exponent - fp.exponent + 1 		# calculate new exponent
+		assert self.exponent < 0x80,"Overflow"				# overflow, product is too large.
+		#
+		result = 0
+		for i in range(0,32):
+			if self.value >= fp.value:						# subtraction possible ? 
+				self.value = self.value-fp.value 			# do the subtraction
+				result |= Float.ISIGN 						# set the result bit.
+			fp.value = fp.value >> 1
+															# straight 32 bit rotate.
+			result = ((result << 1) | (result >> 31)) & Float.IMASK
+
+		self.value = result 	 							# get result
+		self.sign = self.sign ^ fp.sign 					# work out result sign.
+		self.normalize()									# and normalize 
+		return self
 
 Float.INTEGER = 0x00										# type values.
 Float.FLOAT = 0x80
 Float.STRING = 0x40		
 
 Float.ISIGN = 0x80000000 									# various constants.
+Float.IMASK = 0xFFFFFFFF
 
 if __name__ == "__main__":
 
-	iList = [0,1,2,6,32,517,-1,-3,-15,23234,-12345] 		# list of integers
+	iList = [0,1,2,6,32,-1,-3,-15] 							# list of integers
+	for i in range(0,10):
+		iList.append(random.randint(-33333,33333))
 	for n1 in range(0,len(iList)):
 		for n2 in range(0,len(iList)):
-			if True:
-				result = 1.0 * iList[n1] * iList[n2]
-				print("{0} * {1} = {2}".format(iList[n1],iList[n2],result))
+			if iList[n2] != 0:
+				result = 1.0 * iList[n1] / iList[n2]
+				print("{0} / {1} = {2}".format(iList[n1],iList[n2],result))
 				f1 = Float().setInteger(iList[n1]).toFloat()
 				f2 = Float().setInteger(iList[n2]).toFloat()
-				f1.mulFloat(f2)
-				if f1.getFloatValue() != result:
+				f1.divFloat(f2)
+				if abs(f1.getFloatValue()-result) > 0.00001:
 					print(" *** FAIL ***",f1.getFloatValue(),result)
 					assert False
+					
