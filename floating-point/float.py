@@ -44,6 +44,12 @@ class Float(object):
 		v = pow(2,self.exponent)*self.value / 65536.0 / 65536.0
 		return v if self.sign == 0 else -v
 	#
+	#		Get number as an integer
+	#
+	def getIntegerValue(self):
+		assert self.type == Float.INTEGER
+		return self.value if (self.value & 0x80000000) == 0 else self.value-0x100000000
+	#
 	#		Convert to information string 
 	#
 	def toString(self):
@@ -107,7 +113,7 @@ class Float(object):
 		self.type = Float.INTEGER 							# reset the type
 		if self.zero:										# special case of zero.
 			self.value = 0 
-			return
+			return self
 		assert self.exponent <= 32,"Overflow"				# overflow error
 		while self.exponent < 32:							# need to denormalise to exponent 32
 			self.value >>= 1
@@ -257,6 +263,28 @@ class Float(object):
 			self.zero = 0
 		self.normalize()
 		return self
+	#
+	#		Convert float to string.
+	#
+	def convertToString(self):
+		assert self.type == Float.FLOAT 					# float in ?
+		#
+		s = "-" if self.sign else ""						# - sign if negative
+		ip = Float().copy(self).toInteger()					# get integer part
+		s  = s + str(abs(ip.getIntegerValue()))		
+		placeCount = 12-len(s)								# don't print silly things.
+		self.fractionalPart()
+		self.sign = 0x00 									# never show any signs.
+		if self.zero != 0:									# fractional zero, no decimals		
+			return s
+		#
+		s = s + "."											# add DP
+		while self.zero == 0x00 and placeCount > 0: 		# while not zero or silly place levels
+			self.mulFloat(Float().setInteger(10).toFloat())	# x 10 and add integer part.
+			s = s + str(Float().copy(self).toInteger().getIntegerValue())
+			self.fractionalPart()
+			placeCount -= 1
+		return s
 
 Float.INTEGER = 0x00										# type values.
 Float.FLOAT = 0x80
@@ -279,14 +307,14 @@ if __name__ == "__main__":
 		iList.append(random.randint(-33333,33333))
 	for n1 in range(0,len(iList)):
 		for n2 in range(0,len(iList)):
-			if iList[n2] != 0:
-				result = 1.0 * iList[n1] / iList[n2]
-				result = result-int(result)
-				print("frac({0} / {1}) = {2}".format(iList[n1],iList[n2],result))
+			if iList[n2] != 0:				
+				result = str(1.0 * iList[n1] / iList[n2])
+				#print("str({2}) = \"{2}\"".format(iList[n1],iList[n2],result))
 				f1 = Float().setInteger(iList[n1]).toFloat()
 				f2 = Float().setInteger(iList[n2]).toFloat()
 				f1.divFloat(f2)
-				f1.fractionalPart()
-				if abs(f1.getFloatValue()-result) > 0.00001:
-					print(" *** FAIL ***",f1.getFloatValue(),result)
+				s = f1.convertToString()
+				print("RR",s,result)
+				if abs(float(s)-float(result)) > 0.00001:
+					print(" *** FAIL ***",iList[n1],iList[n2],float(s),float(result))
 					assert False
