@@ -52,12 +52,14 @@ for s in src:
 	opcode = int(m.group(3),16)
 	assert opcodes[opcode] is None,"Duplicate "+s
 	mode = m.group(2).lower()
-	if (opcode & 0x1F) == 0x10  or (opcode & 0x1F) == 0x13 or opcode == 0x80 or opcode == 0x83:
+	if (opcode & 0x1F) == 0x10  or (opcode & 0x1F) == 0x13 or opcode == 0x80 or opcode == 0x83 or opcode == 0x63:
 		mode = "$rr" if (opcode & 0x0F) == 0 else "$rrrr"
 	assert mode in eacMap,"Mode "+mode
 	mnemonic = m.group(1).lower()
 	if mnemonic[:3] not in remove:
 		opcodes[opcode] = [ opcode, mnemonic ,eacMap[mode] ]
+
+definitions = {}
 
 print(";\n; This file is generated from 65CE02.txt\n;\n")
 for opc in range(0,256):
@@ -69,11 +71,13 @@ for opc in range(0,256):
 			decode = " @2"
 		decode = mnemonic+decode
 		eac = "EAC_"+aMode.upper()+"()"
+		definitions[eac] = True
 
 		print("case 0x{0:02x}: // *** ${0:02x} {1} {2} ***".format(opc,mnemonic,aMode))
 
 		if mnemonic in loadType:
 			print("\t{0};READ8();OPC_{1}();".format(eac,mnemonic.upper()))
+			definitions["OPC_"+mnemonic.upper()+"()"] = True
 
 		elif mnemonic in saveType:
 			print("\t{0};MBR = {1};WRITE8();".format(eac,mnemonic[-1].upper()))
@@ -82,6 +86,7 @@ for opc in range(0,256):
 			isAcc = aMode = "acc"
 			print("\t{0};{1};OPC_{2}();{3};".format(eac,"MBR = A" if isAcc else "READ8()",
 											mnemonic.upper(),"A = MBR" if isAcc else "WRITE8()"))
+			definitions["OPC_"+mnemonic.upper()+"()"] = True
 
 		elif mnemonic in rmwWordType:
 			assert False,"Not implemented"
@@ -100,6 +105,7 @@ for opc in range(0,256):
 
 		elif mnemonic in branchType:
 			print("\t{0};if (TEST_{1}()) PC = MAR;".format(eac,mnemonic.upper()))
+			definitions["TEST_"+mnemonic.upper()+"()"] = True
 
 		elif mnemonic in incDecType:
 			cmd = "INC" if mnemonic[0] == "i" else "DEC"
@@ -109,8 +115,14 @@ for opc in range(0,256):
 			s = ""
 			if aMode != "implied" and aMode != "acc":
 				s = eac+";"
-			print("\t{0}OPCX_{1}()".format(s,mnemonic.upper()))
+			print("\t{0}OPC_{1}()".format(s,mnemonic.upper()))
+			definitions["OPC_"+mnemonic.upper()+"()"] = True
+
 		print("\tbreak;\n")
 
 
+macros = [x for x in definitions.keys()]
+macros.sort()
+
+open("temp","w").write("\n".join(["#define {0}".format(k) for k in macros]))
 
