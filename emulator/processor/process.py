@@ -61,7 +61,7 @@ for s in src:
 
 definitions = {}
 
-print(";\n; This file is generated from 65CE02.txt\n;\n")
+print("//\n// This file is generated from 65CE02.txt\n//\n")
 for opc in range(0,256):
 	if opcodes[opc] is not None:
 		mnemonic = opcodes[opc][1]
@@ -115,7 +115,7 @@ for opc in range(0,256):
 			s = ""
 			if aMode != "implied" and aMode != "acc":
 				s = eac+";"
-			print("\t{0}OPC_{1}()".format(s,mnemonic.upper()))
+			print("\t{0}OPC_{1}();".format(s,mnemonic.upper()))
 			definitions["OPC_"+mnemonic.upper()+"()"] = True
 
 		print("\tbreak;\n")
