@@ -7,6 +7,7 @@
 #		Author : 	Paul Robson (paul@robsons.org.uk)
 #
 # *******************************************************************************************
+# *******************************************************************************************
 
 import random,re
 
@@ -250,6 +251,13 @@ class Float(object):
 		self.normalize()									# and normalize 
 		return self
 	#
+	#		Integer part
+	#
+	def integerPart(self):
+		self.toInteger()
+		self.toFloat()
+		return self
+	#
 	#		Fractional part (i.e. bit get if take off integer.)
 	#
 	def fractionalPart(self):
@@ -272,7 +280,7 @@ class Float(object):
 	def convertToString(self):
 		assert self.type == Float.FLOAT 					# float in ?
 		#
-		if abs(self.exponent) > 30:							# exponent too large
+		if abs(self.exponent) > 26:							# exponent too large
 			displayExponent = 0 							# adjust it by mul/div by 10.
 			if self.exponent > 0:
 				while self.getFloatValue() >= 10.0:
@@ -328,10 +336,25 @@ class Float(object):
 				self.addFloat(f1)
 				s = s[1:]
 		#
-		m = re.match("^[eE](\-?)(\d+)(.*)",s) 			# exponent format ?
-		#
-
+		m = re.match("^[eE](\-?)(\d+)(.*)",s) 				# exponent format ?
+		if m is not None:
+			c10 = Float().setInteger(10).toFloat()
+			if m.group(1) == "-":
+				for i in range(0,int(m.group(2))):
+					self.divFloat(c10)
+			else:
+				for i in range(0,int(m.group(2))):
+					self.mulFloat(c10)
 		return self
+	#
+	#		Equality test. subtract float, return TRUE if *nearly* equal.
+	#
+	def equalFloat(self,fp):
+		if abs(self.exponent-fp.exponent) > 1:				# Exponents should be the same +/- 1
+			return False
+		exp = self.exponent 								# remember one.
+		self.subFloat(fp)									# subtract it.
+		return self.exponent + 14 < exp 					# difference < 2^-14
 
 Float.INTEGER = 0x00										# type values.
 Float.FLOAT = 0x80
@@ -343,6 +366,7 @@ Float.IMASK = 0xFFFFFFFF
 if __name__ == "__main__":
 	s = "0.000000021471"
 	s = "987654321"
+	s = "1.44e-5"
 	print(s,float(s)*float(s))
 	f = Float().convertFromString(s).toFloat()
 	print(f.toString())
@@ -352,7 +376,7 @@ if __name__ == "__main__":
 	print(f.convertToString())
 #
 #	L 		Load a number into B (follows in [])
-#	M 		Copy B to A
+#	C 		Copy B to A
 #	F 		Fractional(A) -> A
 #	I 		Integer(A) -> A
 #	+-*/	A = A <op> B
@@ -361,4 +385,3 @@ if __name__ == "__main__":
 #	; 		Ignore rest of line.
 #
 
-# TODO: Fix exponents on string being converted.
