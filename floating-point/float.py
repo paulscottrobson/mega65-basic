@@ -328,33 +328,41 @@ class Float(object):
 		self.value = (self.value * sign) & 0xFFFFFFFF		# apply sign if provided
 		if s.startswith("."):								# decimal number.
 			s = s[1:]
-			self.toFloat()
+			self.toFloat() 									# make float
+			self.sign = 0									# and absolute
 			scalar = Float().setInteger(1).toFloat()
 			while s != "" and s[0] >= '0' and s[0] <= '9':
 				scalar.divFloat(Float().setInteger(10).toFloat())
 				f1 = Float().setInteger(int(s[0])).toFloat().mulFloat(scalar)
 				self.addFloat(f1)
 				s = s[1:]
+			self.sign = 0xFF if sign < 0 else 0x00			# restore signs
 		#
-		m = re.match("^[eE](\-?)(\d+)(.*)",s) 				# exponent format ?
+		m = re.match("^[eE]([\-\+]?)(\d+)(.*)",s) 			# exponent format ?
 		if m is not None:
-			c10 = Float().setInteger(10).toFloat()
+			self.toFloat()
 			if m.group(1) == "-":
 				for i in range(0,int(m.group(2))):
+					c10 = Float().setInteger(10).toFloat()
 					self.divFloat(c10)
 			else:
 				for i in range(0,int(m.group(2))):
+					c10 = Float().setInteger(10).toFloat()
 					self.mulFloat(c10)
 		return self
 	#
 	#		Equality test. subtract float, return TRUE if *nearly* equal.
 	#
 	def equalFloat(self,fp):
+		if self.zero != 0 and fp.zero != 0:					# Both zero
+			return True 
 		if abs(self.exponent-fp.exponent) > 1:				# Exponents should be the same +/- 1
 			return False
 		exp = self.exponent 								# remember one.
 		self.subFloat(fp)									# subtract it.
-		return self.exponent + 14 < exp 					# difference < 2^-14
+		if self.zero != 0:									# is zero.
+			return True
+		return self.exponent + 12 < exp 					# difference < 2^-12
 
 Float.INTEGER = 0x00										# type values.
 Float.FLOAT = 0x80
