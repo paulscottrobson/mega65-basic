@@ -20,7 +20,7 @@ def create():
 	if n == 2:
 		return random.randint(-20000000,20000000) / 1000
 	n = random.randint(-1000,1000)/100
-	pw = random.randint(-20,20)
+	pw = random.randint(-15,15)
 	return n * pow(10,pw)
 
 def calc(op,n1,n2):
@@ -54,7 +54,7 @@ def strf(n):
 
 random.seed()
 src = ""
-for i in range(0,10000):
+for i in range(0,4000):
 	op = "+-*/FI"[random.randint(0,3)]					# select operation
 	n1 = create()										# first number
 	n2 = create()										# second number.
