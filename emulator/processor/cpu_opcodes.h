@@ -19,7 +19,7 @@ case 0x05: // *** $05 ora zero ***
 	break;
 
 case 0x06: // *** $06 asl zero ***
-	EAC_ZERO();MBR = A;OPC_ASL();A = MBR;
+	EAC_ZERO();READ8();OPC_ASL();WRITE8();
 	break;
 
 case 0x08: // *** $08 php implied ***
@@ -43,7 +43,7 @@ case 0x0d: // *** $0d ora abs ***
 	break;
 
 case 0x0e: // *** $0e asl abs ***
-	EAC_ABS();MBR = A;OPC_ASL();A = MBR;
+	EAC_ABS();READ8();OPC_ASL();WRITE8();
 	break;
 
 case 0x10: // *** $10 bpl rel8 ***
@@ -67,7 +67,7 @@ case 0x15: // *** $15 ora zerox ***
 	break;
 
 case 0x16: // *** $16 asl zerox ***
-	EAC_ZEROX();MBR = A;OPC_ASL();A = MBR;
+	EAC_ZEROX();READ8();OPC_ASL();WRITE8();
 	break;
 
 case 0x18: // *** $18 clc implied ***
@@ -79,7 +79,7 @@ case 0x19: // *** $19 ora absy ***
 	break;
 
 case 0x1a: // *** $1a inc implied ***
-	EAC_IMPLIED();MBR = A;OPC_INC();A = MBR;
+	EAC_IMPLIED();READ8();OPC_INC();WRITE8();
 	break;
 
 case 0x1b: // *** $1b inz implied ***
@@ -91,7 +91,7 @@ case 0x1d: // *** $1d ora absx ***
 	break;
 
 case 0x1e: // *** $1e asl absx ***
-	EAC_ABSX();MBR = A;OPC_ASL();A = MBR;
+	EAC_ABSX();READ8();OPC_ASL();WRITE8();
 	break;
 
 case 0x20: // *** $20 jsr abs ***
@@ -119,7 +119,7 @@ case 0x25: // *** $25 and zero ***
 	break;
 
 case 0x26: // *** $26 rol zero ***
-	EAC_ZERO();MBR = A;OPC_ROL();A = MBR;
+	EAC_ZERO();READ8();OPC_ROL();WRITE8();
 	break;
 
 case 0x28: // *** $28 plp implied ***
@@ -147,7 +147,7 @@ case 0x2d: // *** $2d and abs ***
 	break;
 
 case 0x2e: // *** $2e rol abs ***
-	EAC_ABS();MBR = A;OPC_ROL();A = MBR;
+	EAC_ABS();READ8();OPC_ROL();WRITE8();
 	break;
 
 case 0x30: // *** $30 bmi rel8 ***
@@ -175,7 +175,7 @@ case 0x35: // *** $35 and zerox ***
 	break;
 
 case 0x36: // *** $36 rol zerox ***
-	EAC_ZEROX();MBR = A;OPC_ROL();A = MBR;
+	EAC_ZEROX();READ8();OPC_ROL();WRITE8();
 	break;
 
 case 0x38: // *** $38 sec implied ***
@@ -187,7 +187,7 @@ case 0x39: // *** $39 and absy ***
 	break;
 
 case 0x3a: // *** $3a dec implied ***
-	EAC_IMPLIED();MBR = A;OPC_DEC();A = MBR;
+	EAC_IMPLIED();READ8();OPC_DEC();WRITE8();
 	break;
 
 case 0x3b: // *** $3b dez implied ***
@@ -203,7 +203,7 @@ case 0x3d: // *** $3d and absx ***
 	break;
 
 case 0x3e: // *** $3e rol absx ***
-	EAC_ABSX();MBR = A;OPC_ROL();A = MBR;
+	EAC_ABSX();READ8();OPC_ROL();WRITE8();
 	break;
 
 case 0x40: // *** $40 rti implied ***
@@ -223,7 +223,7 @@ case 0x43: // *** $43 asr acc ***
 	break;
 
 case 0x44: // *** $44 asr zero ***
-	EAC_ZERO();MBR = A;OPC_ASR();A = MBR;
+	EAC_ZERO();READ8();OPC_ASR();WRITE8();
 	break;
 
 case 0x45: // *** $45 eor zero ***
@@ -231,7 +231,7 @@ case 0x45: // *** $45 eor zero ***
 	break;
 
 case 0x46: // *** $46 lsr zero ***
-	EAC_ZERO();MBR = A;OPC_LSR();A = MBR;
+	EAC_ZERO();READ8();OPC_LSR();WRITE8();
 	break;
 
 case 0x48: // *** $48 pha implied ***
@@ -259,7 +259,7 @@ case 0x4d: // *** $4d eor abs ***
 	break;
 
 case 0x4e: // *** $4e lsr abs ***
-	EAC_ABS();MBR = A;OPC_LSR();A = MBR;
+	EAC_ABS();READ8();OPC_LSR();WRITE8();
 	break;
 
 case 0x50: // *** $50 bvc rel8 ***
@@ -279,7 +279,7 @@ case 0x53: // *** $53 bvc rel16 ***
 	break;
 
 case 0x54: // *** $54 asr zerox ***
-	EAC_ZEROX();MBR = A;OPC_ASR();A = MBR;
+	EAC_ZEROX();READ8();OPC_ASR();WRITE8();
 	break;
 
 case 0x55: // *** $55 eor zerox ***
@@ -287,7 +287,7 @@ case 0x55: // *** $55 eor zerox ***
 	break;
 
 case 0x56: // *** $56 lsr zerox ***
-	EAC_ZEROX();MBR = A;OPC_LSR();A = MBR;
+	EAC_ZEROX();READ8();OPC_LSR();WRITE8();
 	break;
 
 case 0x58: // *** $58 cli implied ***
@@ -311,7 +311,7 @@ case 0x5d: // *** $5d eor absx ***
 	break;
 
 case 0x5e: // *** $5e lsr absx ***
-	EAC_ABSX();MBR = A;OPC_LSR();A = MBR;
+	EAC_ABSX();READ8();OPC_LSR();WRITE8();
 	break;
 
 case 0x60: // *** $60 rts implied ***
@@ -339,7 +339,7 @@ case 0x65: // *** $65 adc zero ***
 	break;
 
 case 0x66: // *** $66 ror zero ***
-	EAC_ZERO();MBR = A;OPC_ROR();A = MBR;
+	EAC_ZERO();READ8();OPC_ROR();WRITE8();
 	break;
 
 case 0x68: // *** $68 pla implied ***
@@ -367,7 +367,7 @@ case 0x6d: // *** $6d adc abs ***
 	break;
 
 case 0x6e: // *** $6e ror abs ***
-	EAC_ABS();MBR = A;OPC_ROR();A = MBR;
+	EAC_ABS();READ8();OPC_ROR();WRITE8();
 	break;
 
 case 0x70: // *** $70 bvs rel8 ***
@@ -395,7 +395,7 @@ case 0x75: // *** $75 adc zerox ***
 	break;
 
 case 0x76: // *** $76 ror zerox ***
-	EAC_ZEROX();MBR = A;OPC_ROR();A = MBR;
+	EAC_ZEROX();READ8();OPC_ROR();WRITE8();
 	break;
 
 case 0x78: // *** $78 sei implied ***
@@ -423,7 +423,7 @@ case 0x7d: // *** $7d adc absx ***
 	break;
 
 case 0x7e: // *** $7e ror absx ***
-	EAC_ABSX();MBR = A;OPC_ROR();A = MBR;
+	EAC_ABSX();READ8();OPC_ROR();WRITE8();
 	break;
 
 case 0x80: // *** $80 bra rel8 ***
@@ -671,7 +671,7 @@ case 0xc5: // *** $c5 cmp zero ***
 	break;
 
 case 0xc6: // *** $c6 dec zero ***
-	EAC_ZERO();MBR = A;OPC_DEC();A = MBR;
+	EAC_ZERO();READ8();OPC_DEC();WRITE8();
 	break;
 
 case 0xc8: // *** $c8 iny implied ***
@@ -695,7 +695,7 @@ case 0xcd: // *** $cd cmp abs ***
 	break;
 
 case 0xce: // *** $ce dec abs ***
-	EAC_ABS();MBR = A;OPC_DEC();A = MBR;
+	EAC_ABS();READ8();OPC_DEC();WRITE8();
 	break;
 
 case 0xd0: // *** $d0 bne rel8 ***
@@ -723,7 +723,7 @@ case 0xd5: // *** $d5 cmp zerox ***
 	break;
 
 case 0xd6: // *** $d6 dec zerox ***
-	EAC_ZEROX();MBR = A;OPC_DEC();A = MBR;
+	EAC_ZEROX();READ8();OPC_DEC();WRITE8();
 	break;
 
 case 0xd8: // *** $d8 cld implied ***
@@ -751,7 +751,7 @@ case 0xdd: // *** $dd cmp absx ***
 	break;
 
 case 0xde: // *** $de dec absx ***
-	EAC_ABSX();MBR = A;OPC_DEC();A = MBR;
+	EAC_ABSX();READ8();OPC_DEC();WRITE8();
 	break;
 
 case 0xe0: // *** $e0 cpx imm8 ***
@@ -775,7 +775,7 @@ case 0xe5: // *** $e5 sbc zero ***
 	break;
 
 case 0xe6: // *** $e6 inc zero ***
-	EAC_ZERO();MBR = A;OPC_INC();A = MBR;
+	EAC_ZERO();READ8();OPC_INC();WRITE8();
 	break;
 
 case 0xe8: // *** $e8 inx implied ***
@@ -799,7 +799,7 @@ case 0xed: // *** $ed sbc abs ***
 	break;
 
 case 0xee: // *** $ee inc abs ***
-	EAC_ABS();MBR = A;OPC_INC();A = MBR;
+	EAC_ABS();READ8();OPC_INC();WRITE8();
 	break;
 
 case 0xf0: // *** $f0 beq rel8 ***
@@ -823,7 +823,7 @@ case 0xf5: // *** $f5 sbc zerox ***
 	break;
 
 case 0xf6: // *** $f6 inc zerox ***
-	EAC_ZEROX();MBR = A;OPC_INC();A = MBR;
+	EAC_ZEROX();READ8();OPC_INC();WRITE8();
 	break;
 
 case 0xf8: // *** $f8 sed implied ***
@@ -847,6 +847,38 @@ case 0xfd: // *** $fd sbc absx ***
 	break;
 
 case 0xfe: // *** $fe inc absx ***
-	EAC_ABSX();MBR = A;OPC_INC();A = MBR;
+	EAC_ABSX();READ8();OPC_INC();WRITE8();
+	break;
+
+case 0x112: // *** $112 ora indz ***
+	EAC_FAR();READFAR();OPC_ORA();
+	break;
+
+case 0x132: // *** $132 and indz ***
+	EAC_FAR();READFAR();OPC_AND();
+	break;
+
+case 0x152: // *** $152 eor indz ***
+	EAC_FAR();READFAR();OPC_EOR();
+	break;
+
+case 0x172: // *** $172 adc indz ***
+	EAC_FAR();READFAR();OPC_ADC();
+	break;
+
+case 0x192: // *** $192 sta indz ***
+	EAC_FAR();MBR = A;WRITEFAR();
+	break;
+
+case 0x1b2: // *** $1b2 lda indz ***
+	EAC_FAR();READFAR();OPC_LDA();
+	break;
+
+case 0x1d2: // *** $1d2 cmp indz ***
+	EAC_FAR();READFAR();OPC_CMP();
+	break;
+
+case 0x1f2: // *** $1f2 sbc indz ***
+	EAC_FAR();READFAR();OPC_SBC();
 	break;
 

@@ -31,34 +31,27 @@ static BYTE8 C_FLAG,I_FLAG,B_FLAG,E_FLAG,											// Values representing statu
 			 D_FLAG,V_FLAG,Z_FLAG,N_FLAG;
 static WORD16 PC,temp16,MAR,MBR;													// Program Counter.
 static BYTE8 ramMemory[RAMSIZE];													// Memory at $0000 upwards
-static LONG32 cycles;																// Cycle Count.
-
-// *******************************************************************************************************************************
-//											   Read and Write Inline Functions
-// *******************************************************************************************************************************
-
-static inline BYTE8 _Read(WORD16 address) {
-	return ramMemory[address];							
-}
-
-static inline void _Write(WORD16 address,BYTE8 data) {
-	ramMemory[address] = data;
-}
+static LONG32 cycles,MAR32;															// Cycle Count.
 
 // *******************************************************************************************************************************
 //											 Memory and I/O read and write macros.
 // *******************************************************************************************************************************
 
-#define READ8() 	MBR = _Read(MAR)
-#define WRITE8() 	_Write(MAR,MBR & 0xFF)
-#define FETCH8() 	MBR = _Read(PC++)
+#define READ8() 	MBR = ramMemory[MAR]
+#define WRITE8() 	ramMemory[MAR] = MBR & 0xFF
+#define FETCH8() 	MBR = ramMemory[PC++]
 
-#define READ16()	MBR = _Read(MAR) | (_Read(MAR+1) << 8)
-#define WRITE16() 	_Write(MAR,MBR & 0xFF);_Write(MAR,MBR >> 8)
+#define READ16()	MBR = ramMemory[MAR] | (ramMemory[MAR+1] << 8)
+#define WRITE16() 	ramMemory[MAR] = MBR & 0xFF;ramMemory[MAR+1] = MBR >> 8
 #define FETCH16() 	MAR = PC;PC = PC + 2;READ16()
 
-#define PUSH8(n)	_Write(SP--,(n))
-#define PULL8() 	_Read(++SP)
+#define PUSH8(n)	ramMemory[SP--] = (n)
+#define PULL8() 	ramMemory[++SP]
+
+#define READFAR()	MBR = ramMemory[MAR32 & MEMMASK]
+#define WRITEFAR()	ramMemory[MAR32 & MEMMASK] = MBR & 0xFF
+
+#define READLONG(x) ramMemory[x]+(ramMemory[(x)+1] << 8)+(ramMemory[(x)+2] << 16)+(ramMemory[(x)+3] << 24)
 
 #include "processor/cpu_macros.h"
 

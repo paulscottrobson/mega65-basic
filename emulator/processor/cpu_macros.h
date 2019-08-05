@@ -1,24 +1,49 @@
+// *******************************************************************************************
+// *******************************************************************************************
+//
+//		Name : 		cpu_macros.h
+//		Purpose :	Macros and Support Functions
+//		Date :		4th August 2019
+//		Author : 	Paul Robson (paul@robsons.org.uk)
+//
+// *******************************************************************************************
+// *******************************************************************************************
+//
+//									Prototypes
+//
 static BYTE8 makeStatus(void);
 static void setStatus(BYTE8 p);
 static void add8Bit(void);
 static void sub8Bit(void);
+
+// *******************************************************************************************
+//
+//					EAC should put the target/source address in MAR
+//
+// *******************************************************************************************
 //
 //								EAC Absolutes
 //
 #define EAC_ABS()		FETCH16();MAR = MBR
-#define EAC_ABSIND()	FETCH16();READ16()
+#define EAC_ABSIND()	EAC_ABS();READ16();MAR = MBR
 #define EAC_ABSINDX()	EAC_ABSX();READ16();MAR = MBR
 #define EAC_ABSX()		EAC_ABS();MAR = (MAR + X) & 0xFFFF
 #define EAC_ABSY()		EAC_ABS();MAR = (MAR + Y) & 0xFFFF
 //
+//				  for LDA (ZP),Z in Far mode (e.g. preceded by NOP)
+//
+#define EAC_FAR()		FETCH8();MAR32 = (READLONG(MBR) + Z) & 0xFFFFFFFF
+//
 //								EAC Zero
 //
-#define EAC_ZERO() 		FETCH8();MAR = MBR
-#define EAC_ZEROX()		EAC_ZERO();MAR = (MAR + X) & 0xFF
-#define EAC_ZEROY()		EAC_ZERO();MAR = (MAR + Y) & 0xFF
-#define EAC_INDX()		FETCH8();MAR = (MBR + X) & 0xFF;READ16()
-#define EAC_INDY()		FETCH8();READ16();MAR = (MBR + Y) & 0xFFFF
-#define EAC_INDZ()		FETCH8();READ16();MAR = (MBR + Z) & 0xFFFF
+#define BASEPAGE(x)		(x)			// Not implemented
+//
+#define EAC_ZERO() 		FETCH8();MAR = BASEPAGE(MBR)
+#define EAC_ZEROX()		EAC_ZERO();MAR = BASEPAGE((MAR + X) & 0xFF)
+#define EAC_ZEROY()		EAC_ZERO();MAR = BASEPAGE((MAR + Y) & 0xFF)
+#define EAC_INDX()		FETCH8();MAR = BASEPAGE((MBR + X) & 0xFF);READ16()
+#define EAC_INDY()		FETCH8();MAR = BASEPAGE(MBR);READ16();MAR = (MBR + Y) & 0xFFFF
+#define EAC_INDZ()		FETCH8();MAR = BASEPAGE(MBR);READ16();MAR = (MBR + Z) & 0xFFFF
 //
 //							   EAC Relative
 //
@@ -27,36 +52,39 @@ static void sub8Bit(void);
 //
 //							 EAC Miscellaneous
 //
-#define EAC_ACC()		{}
+#define EAC_ACC()		{}			
 #define EAC_IMM8()		MAR = PC;PC++
-#define EAC_IMPLIED()	{}
-#define EAC_STKINDY()	{}
+#define EAC_IMPLIED()	{}	
+#define EAC_STKINDY()	{}			// Not implemented
 //
 //									Set NZ from a specific value.
 //
-#define SETNZ(c)		N_FLAG = ((c) >> 7) & 1;Z_FLAG = (c == 0) ? 1 : 0
+#define SETNZ(c)		N_FLAG = ((c) & 0x80) ? 1 : 0;Z_FLAG = ((c) == 0) ? 1 : 0
 //
 //									Opcodes
 //
 #define OPC_ADC()		add8Bit();A = MBR
+
 #define OPC_AND()		A &= MBR;SETNZ(A)
 #define OPC_EOR()		A ^= MBR;SETNZ(A)
+#define OPC_ORA()		A |= MBR;SETNZ(A)
+
 #define OPC_CMP()		C_FLAG = 1;sub8Bit(A)
 #define OPC_CPX()		C_FLAG = 1;sub8Bit(X)
 #define OPC_CPY()		C_FLAG = 1;sub8Bit(Y)
 #define OPC_CPZ()		C_FLAG = 1;sub8Bit(Z)
-#define OPC_ORA()		A |= MBR;SETNZ(A)
 #define OPC_SBC()		sub8Bit(A);A = MBR
 
 #define OPC_BIT()		N_FLAG = (MBR >> 7) & 1;V_FLAG = (MBR >> 6) * 1;Z_FLAG = ((A & MBR) == 0) ? 1 : 0
 
 #define OPC_ASL()		C_FLAG = (MBR >> 7) & 1;MBR = (MBR << 1) & 0xFF;SETNZ(MBR)
 #define OPC_ASR()		C_FLAG = MBR & 1;MBR = ((MBR >> 1) & 0x7F)|(MBR & 0x80);SETNZ(MBR)
+#define OPC_LSR()		C_FLAG = MBR & 1;MBR = (MBR >> 1) & 0x7F;SETNZ(MBR)
+#define OPC_ROL()		MBR = (MBR << 1)|C_FLAG;C_FLAG = (MBR >> 8) & 1;MBR = MBR & 0xFF;SETNZ(MBR)
+#define OPC_ROR()		MBR = (MBR & 0xFF)|(C_FLAG << 8);C_FLAG = MBR & 1;MBR = (MBR >> 1) & 0xFF;SETNZ(MBR)
+
 #define OPC_DEC()		MBR = (MBR - 1) & 0xFF;SETNZ(MBR)
 #define OPC_INC()		MBR = (MBR + 1) & 0xFF;SETNZ(MBR)
-#define OPC_LSR()		C_FLAG = MBR & 1;MBR = (MBR >> 1) & 0x7F;SETNZ(MBR)
-#define OPC_ROL()		MBR = (MBR << 1)|C_FLAG;C_FLAG = (MBR >> 8) & 1;SETNZ(MBR)
-#define OPC_ROR()		MBR = (MBR & 0xFF)|(C_FLAG << 8);A = MBR >> 1;C_FLAG = MBR & 1;SETNZ(MBR)
 
 #define OPC_BSR() 		OPC_JSR()
 #define OPC_JMP()		EAC_ABS();PC = MAR
@@ -77,10 +105,11 @@ static void sub8Bit(void);
 
 #define OPC_TAB()		{}
 #define OPC_TBA()		{}
+
 #define OPC_TSX()		X = (SP & 0xFF);SETNZ(X)
 #define OPC_TSY() 		Y = (SP >> 8);SETNZ(Y)
-#define OPC_TXS()		SP = (SP & 0xFF00)|X
-#define OPC_TYS()		SP = (SP & 0x00FF)|(Y << 8)
+#define OPC_TXS()		SP = (SP & 0xFF00)|X; if (E_FLAG == 0) SP = X|0x100;
+#define OPC_TYS()		SP = (SP & 0x00FF)|(Y << 8); if (E_FLAG == 0) SP = (SP & 0xFF)|0x100;
 
 #define TEST_BCC()		(C_FLAG == 0)
 #define TEST_BCS()		(C_FLAG != 0)
@@ -93,7 +122,7 @@ static void sub8Bit(void);
 #define TEST_BVS()		(V_FLAG != 0)
 
 //
-//		Create status byte from individual flags
+//		Create status byte from individual flags, for PHP
 //
 static BYTE8 makeStatus(void) {
 	return (N_FLAG << 7)|(V_FLAG << 6)|(E_FLAG << 5)|(B_FLAG << 4)|
@@ -101,7 +130,7 @@ static BYTE8 makeStatus(void) {
 }
 
 //
-//		Set individual flags fom status byte
+//		Set individual flags fom status byte for PLP and RTI.
 //
 static void setStatus(BYTE8 p) {
 	N_FLAG = (p >> 7) & 1;V_FLAG = (p >> 6) & 1;E_FLAG = (p >> 5) & 1;B_FLAG = (p >> 4) & 1;
@@ -109,7 +138,7 @@ static void setStatus(BYTE8 p) {
 }
 
 //
-//		8 bit addition
+//		8 bit addition MBR := A + MBR + C, set NZCV. Does not update A.
 //
 static void add8Bit(void) {
 	WORD16 result;
@@ -131,7 +160,7 @@ static void add8Bit(void) {
 }
 
 //
-//		8 bit subtraction
+//		8 bit subtraction MBR := n1 - MBR - (~C), set NZCV. Does not update A
 //
 static void sub8Bit(BYTE8 n1) {
  	WORD16 result;

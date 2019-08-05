@@ -83,7 +83,7 @@ for opc in range(0,256):
 			print("\t{0};MBR = {1};WRITE8();".format(eac,mnemonic[-1].upper()))
 
 		elif mnemonic in rmwType:
-			isAcc = aMode = "acc"
+			isAcc = aMode == "acc"
 			print("\t{0};{1};OPC_{2}();{3};".format(eac,"MBR = A" if isAcc else "READ8()",
 											mnemonic.upper(),"A = MBR" if isAcc else "WRITE8()"))
 			definitions["OPC_"+mnemonic.upper()+"()"] = True
@@ -120,6 +120,17 @@ for opc in range(0,256):
 
 		print("\tbreak;\n")
 
+for opc in range(0,256):
+	if opcodes[opc] is not None:
+		mnemonic = opcodes[opc][1]
+		aMode = opcodes[opc][2]
+		if aMode == "indz":
+			print("case 0x{0:03x}: // *** ${0:03x} {1} {2} ***".format(opc+0x100,mnemonic,aMode))
+			if mnemonic == "sta":
+				print("\tEAC_FAR();MBR = A;WRITEFAR();")
+			else:
+				print("\tEAC_FAR();READFAR();OPC_{0}();".format(mnemonic.upper()))
+			print("\tbreak;\n")
 
 macros = [x for x in definitions.keys()]
 macros.sort()

@@ -13,6 +13,7 @@
 #define _PROCESSOR_H
 
 #define RAMSIZE 		(65536)														// 32k in Windows
+#define MEMMASK 		(RAMSIZE-1)
 
 typedef unsigned short WORD16;														// 8 and 16 bit types.
 typedef unsigned char  BYTE8;
