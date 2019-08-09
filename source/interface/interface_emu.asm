@@ -2,7 +2,7 @@
 ; *******************************************************************************************
 ;
 ;		Name : 		interface_emu.asm
-;		Purpose :	Assembler Inteface
+;		Purpose :	Assembler Interface (Emulated Hardware)
 ;		Date :		9th August 2019
 ;		Author : 	Paul Robson (paul@robsons.org.uk)
 ;

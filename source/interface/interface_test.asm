@@ -12,9 +12,10 @@
 		* = $0000
 		nop
 
-		* = $C000
+		* = $A000
 
 		.include 	"interface_emu.asm"
+;		.include 	"interface_mega65.asm"
 
 TestCode:
 		ldx 		#$FF 					; empty stack
