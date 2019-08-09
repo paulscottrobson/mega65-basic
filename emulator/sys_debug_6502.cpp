@@ -50,9 +50,9 @@ void DBGXRender(int *address,int showDisplay) {
 	n = 0;
 	int a = address[1];																// Dump Memory.
 	for (int row = 15;row < 23;row++) {
-		GFXNumber(GRID(0,row),a,16,4,GRIDSIZE,DBGC_ADDRESS,-1);
+		GFXNumber(GRID(0,row),a,16,5,GRIDSIZE,DBGC_ADDRESS,-1);
 		for (int col = 0;col < 8;col++) {
-			GFXNumber(GRID(5+col*3,row),CPUReadMemory(a),16,2,GRIDSIZE,DBGC_DATA,-1);
+			GFXNumber(GRID(6+col*3,row),CPUReadFarMemory(a),16,2,GRIDSIZE,DBGC_DATA,-1);
 			a = (a + 1) & 0xFFFF;
 		}		
 	}
@@ -63,23 +63,23 @@ void DBGXRender(int *address,int showDisplay) {
 	for (int row = 0;row < 14;row++) {
 		int isPC = (p == ((s->pc) & 0xFFFF));										// Tests.
 		int isBrk = (p == address[3]);
-		GFXNumber(GRID(0,row),p,16,4,GRIDSIZE,isPC ? DBGC_HIGHLIGHT:DBGC_ADDRESS,	// Display address / highlight / breakpoint
+		GFXNumber(GRID(0,row),p,16,5,GRIDSIZE,isPC ? DBGC_HIGHLIGHT:DBGC_ADDRESS,	// Display address / highlight / breakpoint
 																	isBrk ? 0xF00 : -1);
-		opc = CPUReadMemory(p);p = (p + 1) & 0xFFFF;								// Read opcode.
+		opc = CPUReadFarMemory(p);p = (p + 1) & 0xFFFF;								// Read opcode.
 		strcpy(buffer,_mnemonics[opc]);												// Work out the opcode.
 		char *at = strchr(buffer,'@');												// Look for '@'
 		if (at != NULL) {															// Operand ?
 			char hex[6],temp[32];	
 			if (at[1] == '1') {
-				sprintf(hex,"%02x",CPUReadMemory(p));
+				sprintf(hex,"%02x",CPUReadFarMemory(p));
 				p = (p+1) & 0xFFFF;
 			}
 			if (at[1] == '2') {
-				sprintf(hex,"%02x%02x",CPUReadMemory(p+1),CPUReadMemory(p));
+				sprintf(hex,"%02x%02x",CPUReadFarMemory(p+1),CPUReadFarMemory(p));
 				p = (p+2) & 0xFFFF;
 			}
 			if (at[1] == 'r') {
-				int addr = CPUReadMemory(p);
+				int addr = CPUReadFarMemory(p);
 				p = (p+1) & 0xFFFF;
 				if ((addr & 0x80) != 0) addr = addr-256;
 				sprintf(hex,"%04x",addr+p);
@@ -89,7 +89,7 @@ void DBGXRender(int *address,int showDisplay) {
 			strcat(temp,at+2);
 			strcpy(buffer,temp);
 		}
-		GFXString(GRID(5,row),buffer,GRIDSIZE,isPC ? DBGC_HIGHLIGHT:DBGC_DATA,-1);	// Print the mnemonic
+		GFXString(GRID(6,row),buffer,GRIDSIZE,isPC ? DBGC_HIGHLIGHT:DBGC_DATA,-1);	// Print the mnemonic
 	}
 
 	int xs = 80;
@@ -113,7 +113,7 @@ void DBGXRender(int *address,int showDisplay) {
 		 	{
 		 		#define CP(c) ((c) >> 4)
 		 		int colour = 0xFFF;
-		 		int ch = CPUReadMemory(x+y*80+0xB000) ;
+		 		int ch = CPUReadFarMemory(x+y*80+0xB000) ;
 		 		ch = ch & 0x7F;
 		 		int xc = x1 + x * 8 * size;
 		 		int yc = y1 + y * 16 * size;

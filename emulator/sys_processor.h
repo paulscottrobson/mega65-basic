@@ -12,7 +12,7 @@
 #ifndef _PROCESSOR_H
 #define _PROCESSOR_H
 
-#define RAMSIZE 		(65536)														// 32k in Windows
+#define RAMSIZE 		(0x20000)													// 128k WorkSpace
 #define MEMMASK 		(RAMSIZE-1)
 
 typedef unsigned short WORD16;														// 8 and 16 bit types.
@@ -26,7 +26,7 @@ typedef unsigned int   LONG32;														// 32 bit type.
 void CPUReset(void);
 BYTE8 CPUExecuteInstruction(void);
 BYTE8 CPUWriteKeyboard(BYTE8 pattern);
-BYTE8 CPUReadMemory(WORD16 address);
+BYTE8 CPUReadFarMemory(LONG32 address);
 
 #ifdef INCLUDE_DEBUGGING_SUPPORT													// Only required for debugging
 

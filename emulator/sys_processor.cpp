@@ -61,7 +61,7 @@ static LONG32 cycles,MAR32;															// Cycle Count.
 
 #ifdef INCLUDE_DEBUGGING_SUPPORT
 static void CPULoadChunk(FILE *f,BYTE8* memory,int count);
-#endif
+#endif	
 
 static void resetProcessor(void) {
 	MAR = 0xFFFC;
@@ -69,7 +69,6 @@ static void resetProcessor(void) {
 	PC = MBR;
 	I_FLAG = 1;
 	D_FLAG = 0;
-	ramMemory[0] = 0xA9;
 }
 
 void CPUReset(void) {
@@ -101,14 +100,9 @@ BYTE8 CPUExecuteInstruction(void) {
 //												Read/Write Memory
 // *******************************************************************************************************************************
 
-BYTE8 CPUReadMemory(WORD16 address) {
-	return ramMemory[address];
+BYTE8 CPUReadFarMemory(LONG32 address) {
+	return ramMemory[address & MEMMASK];
 }
-
-void CPUWriteMemory(WORD16 address,BYTE8 data) {
-	ramMemory[address] = data;
-}
-
 
 #ifdef INCLUDE_DEBUGGING_SUPPORT
 
@@ -137,7 +131,7 @@ BYTE8 CPUExecute(WORD16 breakPoint1,WORD16 breakPoint2) {
 	do {
 		BYTE8 r = CPUExecuteInstruction();											// Execute an instruction
 		if (r != 0) return r; 														// Frame out.
-		next = CPUReadMemory(PC);
+		next = CPUReadFarMemory(PC);
 	} while (PC != breakPoint1 && PC != breakPoint2 && next != 0xEA);				// Stop on breakpoint or $EA break
 	return 0; 
 }
@@ -147,7 +141,7 @@ BYTE8 CPUExecute(WORD16 breakPoint1,WORD16 breakPoint2) {
 // *******************************************************************************************************************************
 
 WORD16 CPUGetStepOverBreakpoint(void) {
-	BYTE8 opcode = CPUReadMemory(PC);												// Current opcode.
+	BYTE8 opcode = CPUReadFarMemory(PC);												// Current opcode.
 	if (opcode == 0x20 || opcode == 0x63) return (PC+3) & 0xFFFF;					// Step over JSR.
 	return 0;																		// Do a normal single step
 }
