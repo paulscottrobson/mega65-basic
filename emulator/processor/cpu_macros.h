@@ -24,7 +24,7 @@ static void sub8Bit(void);
 //
 //								EAC Absolutes
 //
-#define EAC_ABS()		FETCH16();MAR = MBR
+#define EAC_ABS()		FETCH16();MAR = MBR;
 #define EAC_ABSIND()	EAC_ABS();READ16();MAR = MBR
 #define EAC_ABSINDX()	EAC_ABSX();READ16();MAR = MBR
 #define EAC_ABSX()		EAC_ABS();MAR = (MAR + X) & 0xFFFF
@@ -87,8 +87,8 @@ static void sub8Bit(void);
 #define OPC_INC()		MBR = (MBR + 1) & 0xFF;SETNZ(MBR)
 
 #define OPC_BSR() 		OPC_JSR()
-#define OPC_JMP()		EAC_ABS();PC = MAR
-#define OPC_JSR()		EAC_ABS();temp16 = MAR;PC--;PUSH8(PC >> 8);PUSH8(PC & 0xFF);PC = temp16
+#define OPC_JMP()		PC = MAR
+#define OPC_JSR()		temp16 = MAR;PC--;PUSH8(PC >> 8);PUSH8(PC & 0xFF);PC = temp16
 
 #define OPC_LDA()		A = MBR & 0xFF;SETNZ(A)
 #define OPC_LDX()		X = MBR & 0xFF;SETNZ(X)

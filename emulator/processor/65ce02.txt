@@ -497,7 +497,7 @@ CPZ
 DEC
  Decrement
 
-   DEC                 3A   65C02
+   DEC A               3A   65C02
    DEC $nn             C6   6502
    DEC $nn,X           D6   6502
    DEC $nnnn           CE   6502
@@ -542,7 +542,7 @@ INC
  Increment
   Operation as of 6502.
 
-   INC                 1A   65C02
+   INC A               1A   65C02
    INC $nn             E6   6502
    INC $nn,X           F6   6502
    INC $nnnn           EE   6502

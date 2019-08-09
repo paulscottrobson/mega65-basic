@@ -78,8 +78,8 @@ case 0x19: // *** $19 ora absy ***
 	EAC_ABSY();READ8();OPC_ORA();
 	break;
 
-case 0x1a: // *** $1a inc implied ***
-	EAC_IMPLIED();READ8();OPC_INC();WRITE8();
+case 0x1a: // *** $1a inc acc ***
+	EAC_ACC();MBR = A;OPC_INC();A = MBR;
 	break;
 
 case 0x1b: // *** $1b inz implied ***
@@ -186,8 +186,8 @@ case 0x39: // *** $39 and absy ***
 	EAC_ABSY();READ8();OPC_AND();
 	break;
 
-case 0x3a: // *** $3a dec implied ***
-	EAC_IMPLIED();READ8();OPC_DEC();WRITE8();
+case 0x3a: // *** $3a dec acc ***
+	EAC_ACC();MBR = A;OPC_DEC();A = MBR;
 	break;
 
 case 0x3b: // *** $3b dez implied ***

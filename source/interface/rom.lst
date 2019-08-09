@@ -1,0 +1,116 @@
+
+; 64tass Turbo Assembler Macro V1.54.1900 listing file
+; 64tass -q -c -D TARGET=2 -b -L rom.lst -o rom.bin interface_test.asm
+; Fri Aug  9 22:12:11 2019
+
+;Offset	;Hex		;Monitor	;Source
+
+;******  Command line definitions
+
+=2					TARGET=2
+
+;******  Processing input file: interface_test.asm
+
+.0000	ea		nop				nop
+
+;******  Processing file: interface_emu.asm
+
+=80					IF_Width 	= 80 							; characters across
+=25					IF_Height 	= 25 							; characters down.
+=4					IF_Pos 		= 4 							; current position, start of line.
+=6					IF_XPos 	= 6 							; current position, horizontal.
+=$b000					IF_Screen = $B000							; 2k screen RAM here
+=$b800					IF_PKeyboard = $B800						; Keyboard port.
+=$b801					IF_PBreak = $B801 							; Break key.
+.c000					IF_Reset:
+.c000	60		rts				rts
+.c001					IF_Home:
+.c001	48		pha				pha
+.c002	a9 00		lda #$00			lda 	#0	 						; zero X position
+.c004	85 06		sta $06				sta 	IF_XPos
+.c006	a9 00		lda #$00			lda 	#IF_Screen & $FF 			; set r/w pos.
+.c008	85 04		sta $04				sta 	IF_Pos
+.c00a	a9 b0		lda #$b0			lda 	#IF_Screen >> 8
+.c00c	85 05		sta $05				sta 	IF_Pos+1
+.c00e	68		pla				pla
+.c00f	60		rts				rts
+.c010					IF_NewLine:
+.c010	48		pha				pha
+.c011	a9 00		lda #$00			lda 	#0 							; back to start of line
+.c013	85 06		sta $06				sta 	IF_XPos
+.c015	18		clc				clc 								; down one line
+.c016	a5 04		lda $04				lda 	IF_Pos
+.c018	69 50		adc #$50			adc 	#80
+.c01a	85 04		sta $04				sta 	IF_Pos
+.c01c	90 02		bcc $c020			bcc 	_IF_NoCarry 				; carry through.
+.c01e	e6 05		inc $05				inc 	IF_Pos+1
+.c020					_IF_NoCarry:
+.c020	68		pla				pla
+.c021	60		rts				rts
+.c022					IF_Read:
+.c022	5a		phy				phy 								; save current Y
+.c023	a4 06		ldy $06				ldy 	IF_XPos 					; read character at current position
+.c025	b1 04		lda ($04),y			lda 	(IF_Pos),y
+.c027	e6 06		inc $06				inc 	IF_XPos 					; step right.
+.c029	7a		ply				ply									; restore Y
+.c02a	60		rts				rts
+.c02b					IF_Write:
+.c02b	5a		phy				phy 								; save current Y
+.c02c	a4 06		ldy $06				ldy 	IF_XPos 					; write character at current position
+.c02e	91 04		sta ($04),y			sta 	(IF_Pos),y
+.c030	e6 06		inc $06				inc 	IF_XPos 					; step right.
+.c032	7a		ply				ply									; restore Y
+.c033	60		rts				rts
+.c034					IF_CheckBreak:
+.c034	ad 01 b8	lda $b801			lda 	IF_PBreak					; non-zero if Ctrl+C pressed.
+.c037	60		rts				rts
+.c038					IF_GetKey:
+.c038	ad 00 b8	lda $b800			lda 	IF_PKeyboard				; read keyboard
+.c03b	f0 07		beq $c044			beq		_IFGK_NoKey 				; skip if zero,no key pressed
+.c03d	48		pha				pha 								; key pressed, clear queue.
+.c03e	a9 00		lda #$00			lda 	#0
+.c040	8d 00 b8	sta $b800			sta 	IF_PKeyboard
+.c043	68		pla				pla
+.c044					_IFGK_NoKey:
+.c044	09 00		ora #$00			ora 	#0							; set Z flag appropriately.
+.c046	60		rts				rts
+
+;******  Return to file: interface_test.asm
+
+.c047					TestCode:
+.c047	a2 ff		ldx #$ff			ldx 		#$FF 					; empty stack
+.c049	9a		txs				txs
+.c04a	20 00 c0	jsr $c000			jsr 		IF_Reset 				; reset external interface
+.c04d	20 01 c0	jsr $c001			jsr 		IF_Home 				; home r/w cursor to (0,0)
+.c050	20 01 c0	jsr $c001	WaitKey:jsr 		IF_Home
+.c053	20 34 c0	jsr $c034			jsr 		IF_CheckBreak
+.c056	20 2b c0	jsr $c02b			jsr 		IF_Write
+.c059	20 10 c0	jsr $c010			jsr 		IF_NewLine
+.c05c	20 38 c0	jsr $c038			jsr 		IF_GetKey				; get a single key.
+.c05f	f0 ef		beq $c050			beq 		WaitKey
+.c061	48		pha				pha 								; write out what it is.
+.c062	4a		lsr a				lsr 		a
+.c063	4a		lsr a				lsr 		a
+.c064	4a		lsr a				lsr 		a
+.c065	4a		lsr a				lsr 		a
+.c066	20 6f c0	jsr $c06f			jsr 		Nibble
+.c069	68		pla				pla
+.c06a	20 6f c0	jsr $c06f			jsr 		Nibble
+.c06d	80 e1		bra $c050			bra 		WaitKey
+.c06f	29 0f		and #$0f	Nibble:	and 		#15
+.c071	c9 0a		cmp #$0a			cmp 		#10
+.c073	90 03		bcc $c078			bcc 		_NINoSub
+.c075	38		sec				sec
+.c076	e9 39		sbc #$39			sbc 		#48+9
+.c078					_NINoSub:
+.c078	18		clc				clc
+.c079	69 30		adc #$30			adc 		#48
+.c07b	20 2b c0	jsr $c02b			jsr 		IF_Write
+.c07e	60		rts				rts
+.c07f					DummyRoutine:
+.c07f	40		rti				rti
+>fffa	7f c0						.word		DummyRoutine
+>fffc	47 c0						.word 		TestCode
+>fffe	7f c0						.word 		DummyRoutine
+
+;******  End of listing
