@@ -86,6 +86,16 @@ IF_Write:
 
 ; *******************************************************************************************
 ;
+;										Undo right-move
+;
+; *******************************************************************************************
+
+IF_LeftOne:
+		dec 	IF_XPos
+		rts
+
+; *******************************************************************************************
+;
 ;						Check if break pressed, return A != 0 if so, Z set.
 ;
 ; *******************************************************************************************
@@ -219,12 +229,20 @@ _EXTClearColorRam:
 _EXTCopyCBMFont:
 		lda 	IF_CBMFont,x 				; +$800 uses the lower case c/set
 		sta 	IF_CharSet,x
+		eor 	#$FF
+		sta 	IF_CharSet+$400,x
 		lda 	IF_CBMFont+$100,x
 		sta 	IF_CharSet+$100,x
+		eor 	#$FF
+		sta 	IF_CharSet+$500,x
 		lda 	IF_CBMFont+$200,x
 		sta 	IF_CharSet+$200,x
+		eor 	#$FF
+		sta 	IF_CharSet+$600,x
 		lda 	IF_CBMFont+$300,x
 		sta 	IF_CharSet+$300,x
+		eor 	#$FF
+		sta 	IF_CharSet+$700,x
 		dex
 		bne 	_EXTCopyCBMFont
 

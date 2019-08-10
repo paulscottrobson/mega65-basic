@@ -28,8 +28,7 @@ TestCode:
 
 		jsr 		IFT_ClearScreen
 
-WaitKey:jsr 		IF_GetKey				; get a single key.
-		beq 		WaitKey
+WaitKey:jsr 		IFT_GetKeyCursor		; get a single key.
 		jsr 		IFT_PrintCharacter
 		bra 		WaitKey
 

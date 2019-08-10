@@ -1,0 +1,538 @@
+
+; 64tass Turbo Assembler Macro V1.54.1900 listing file
+; 64tass -q --m4510 -D INTERFACE=2 -b -L rom.lst -o rom.bin interface_test.asm
+; Sat Aug 10 09:26:56 2019
+
+;Offset	;Hex		;Monitor	;Source
+
+;******  Command line definitions
+
+=2					INTERFACE=2
+
+;******  Processing input file: interface_test.asm
+
+.0000	ea		nop				nop
+
+;******  Processing file: interface_mega65.asm
+
+=80					IF_Width 	= 80 							; characters across
+=25					IF_Height 	= 25 							; characters down.
+=4					IF_Pos 		= 4 							; current position, start of line
+=6					IF_XPos 	= 6 							; current position, horizontal.
+=8					IF_FarPtr 	= 8 							; far pointer (4 bytes)
+=$1000					IF_Screen = $1000							; 2k screen RAM here
+=$800					IF_CharSet = $800							; 2k character set (0-7F) here
+.a000					IF_Home:
+.a000	48		pha				pha 								; reset cursor position
+.a001	a9 00		lda #$00			lda 	#IF_Screen & $FF
+.a003	85 04		sta $04				sta 	IF_Pos
+.a005	a9 10		lda #$10			lda 	#IF_Screen >> 8
+.a007	85 05		sta $05				sta 	IF_Pos+1
+.a009	a9 00		lda #$00			lda 	#0
+.a00b	85 06		sta $06				sta 	IF_XPos
+.a00d	68		pla				pla
+.a00e	60		rts				rts
+.a00f					IF_NewLine:
+.a00f	48		pha				pha
+.a010	a9 00		lda #$00			lda 	#0 							; back to start of line
+.a012	85 06		sta $06				sta 	IF_XPos
+.a014	18		clc				clc 								; down one line
+.a015	a5 04		lda $04				lda 	IF_Pos
+.a017	69 50		adc #$50			adc 	#80
+.a019	85 04		sta $04				sta 	IF_Pos
+.a01b	90 02		bcc $a01f			bcc 	_IF_NoCarry 				; carry through.
+.a01d	e6 05		inc $05				inc 	IF_Pos+1
+.a01f					_IF_NoCarry:
+.a01f	68		pla				pla
+.a020	60		rts				rts
+.a021					IF_Read:
+.a021	5a		phy				phy 								; save current Y
+.a022	a4 06		ldy $06				ldy 	IF_XPos 					; read character at current position
+.a024	b1 04		lda ($04),y			lda 	(IF_Pos),y
+.a026	e6 06		inc $06				inc 	IF_XPos 					; step right.
+.a028	7a		ply				ply									; restore Y
+.a029	60		rts				rts
+.a02a					IF_Write:
+.a02a	5a		phy				phy 								; save current Y
+.a02b	a4 06		ldy $06				ldy 	IF_XPos 					; write character at current position
+.a02d	91 04		sta ($04),y			sta 	(IF_Pos),y
+.a02f	e6 06		inc $06				inc 	IF_XPos 					; step right.
+.a031	7a		ply				ply									; restore Y
+.a032	60		rts				rts
+.a033					IF_LeftOne:
+.a033	c6 06		dec $06				dec 	IF_XPos
+.a035	60		rts				rts
+.a036					IF_CheckBreak:
+.a036	db		phz				phz
+.a037	20 7f a0	jsr $a07f			jsr 	IF_SetupKeyAddress 			; point to keyboard
+.a03a	e6 08		inc $08				inc 	IF_FarPtr 					; point to modifiers.
+.a03c	ea		nop				nop 								; read modifiers.
+.a03d	b2 08		lda ($08),z			lda 	(IF_FarPtr),z
+.a03f	fb		plz				plz 								; restore Z
+.a040	29 05		and #$05			and 	#5							; break is LeftShift+Ctrl
+.a042	c9 05		cmp #$05			cmp 	#5
+.a044	f0 02		beq $a048			beq 	_IF_CBExit
+.a046	a9 00		lda #$00			lda 	#0
+.a048					_IF_CBExit:
+.a048	c9 00		cmp #$00			cmp 	#0
+.a04a	60		rts				rts
+.a04b					IF_GetKey:
+.a04b	db		phz				phz
+.a04c	20 7f a0	jsr $a07f			jsr 	IF_SetupKeyAddress
+.a04f	ea		nop				nop 								; read keyboard
+.a050	b2 08		lda ($08),z			lda 	(IF_FarPtr),z
+.a052	c9 14		cmp #$14			cmp 	#20
+.a054	d0 02		bne $a058			bne 	_KMNo
+.a056	a9 08		lda #$08			lda 	#"H"-64
+.a058					_KMNo:
+.a058	c9 91		cmp #$91			cmp 	#145
+.a05a	d0 02		bne $a05e			bne 	_KMNo
+.a05c	a9 17		lda #$17			lda 	#"W"-64
+.a05e					_KMNo:
+.a05e	c9 11		cmp #$11			cmp 	#17
+.a060	d0 02		bne $a064			bne 	_KMNo
+.a062	a9 13		lda #$13			lda 	#"S"-64
+.a064					_KMNo:
+.a064	c9 9d		cmp #$9d			cmp 	#157
+.a066	d0 02		bne $a06a			bne 	_KMNo
+.a068	a9 01		lda #$01			lda 	#"A"-64
+.a06a					_KMNo:
+.a06a	c9 1d		cmp #$1d			cmp 	#29
+.a06c	d0 02		bne $a070			bne 	_KMNo
+.a06e	a9 04		lda #$04			lda 	#"D"-64
+.a070					_KMNo:
+.a070	c9 00		cmp #$00			cmp 	#0
+.a072	f0 07		beq $a07b			beq 	_IFGKEmpty
+.a074	48		pha				pha
+.a075	a9 00		lda #$00			lda 	#0
+.a077	ea		nop				nop
+.a078	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a07a	68		pla				pla
+.a07b					_IFGKEmpty:
+.a07b	fb		plz				plz
+.a07c	c9 00		cmp #$00			cmp 	#0 							; set Z
+.a07e	60		rts				rts
+.a07f					IF_SetupKeyAddress:
+.a07f	a9 0f		lda #$0f			lda 	#$0F 						; set up to write to read keyboard.
+.a081	85 0b		sta $0b				sta 	IF_FarPtr+3
+.a083	a9 fd		lda #$fd			lda 	#$FD
+.a085	85 0a		sta $0a				sta 	IF_FarPtr+2
+.a087	a9 36		lda #$36			lda 	#$36
+.a089	85 09		sta $09				sta 	IF_FarPtr+1
+.a08b	a9 10		lda #$10			lda 	#$10
+.a08d	85 08		sta $08				sta 	IF_FarPtr+0
+.a08f	a3 00		ldz #$00			ldz 	#0
+.a091	60		rts				rts
+.a092					IF_Reset:
+.a092	48		pha				pha 								; save registers
+.a093	da		phx				phx
+.a094	5a		phy				phy
+.a095	a9 0f		lda #$0f			lda 	#$0F 						; set up to write to video system.
+.a097	85 0b		sta $0b				sta 	IF_FarPtr+3
+.a099	a9 fd		lda #$fd			lda 	#$FD
+.a09b	85 0a		sta $0a				sta 	IF_FarPtr+2
+.a09d	a9 30		lda #$30			lda 	#$30
+.a09f	85 09		sta $09				sta 	IF_FarPtr+1
+.a0a1	a9 00		lda #$00			lda 	#$00
+.a0a3	85 08		sta $08				sta 	IF_FarPtr+0
+.a0a5	a3 2f		ldz #$2f			ldz 	#$2F 						; address already set up
+.a0a7	a9 47		lda #$47			lda 	#$47
+.a0a9	ea		nop				nop
+.a0aa	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0ac	a3 2f		ldz #$2f			ldz 	#$2F 						; address already set up
+.a0ae	a9 53		lda #$53			lda 	#$53
+.a0b0	ea		nop				nop
+.a0b1	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0b3	a3 30		ldz #$30			ldz 	#$30 						; address already set up
+.a0b5	a9 40		lda #$40			lda 	#$40
+.a0b7	ea		nop				nop
+.a0b8	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0ba	a3 31		ldz #$31			ldz 	#$31 						; address already set up
+.a0bc	a9 c0		lda #$c0			lda 	#$80+$40
+.a0be	ea		nop				nop
+.a0bf	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0c1	a3 20		ldz #$20			ldz 	#$20 						; address already set up
+.a0c3	a9 00		lda #$00			lda 	#0
+.a0c5	ea		nop				nop
+.a0c6	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0c8	a3 21		ldz #$21			ldz 	#$21 						; address already set up
+.a0ca	a9 00		lda #$00			lda 	#0
+.a0cc	ea		nop				nop
+.a0cd	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0cf	a3 54		ldz #$54			ldz 	#$54 						; address already set up
+.a0d1	a9 40		lda #$40			lda 	#$40
+.a0d3	ea		nop				nop
+.a0d4	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0d6	a3 01		ldz #$01			ldz 	#$01 						; address already set up
+.a0d8	a9 ff		lda #$ff			lda 	#$FF
+.a0da	ea		nop				nop
+.a0db	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0dd	a3 00		ldz #$00			ldz 	#$00 						; address already set up
+.a0df	a9 ff		lda #$ff			lda 	#$FF
+.a0e1	ea		nop				nop
+.a0e2	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0e4	a3 16		ldz #$16			ldz 	#$16 						; address already set up
+.a0e6	a9 cc		lda #$cc			lda 	#$CC
+.a0e8	ea		nop				nop
+.a0e9	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0eb	a3 18		ldz #$18			ldz 	#$18 						; address already set up
+.a0ed	a9 42		lda #$42			lda 	#$42
+.a0ef	ea		nop				nop
+.a0f0	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0f2	a3 11		ldz #$11			ldz 	#$11 						; address already set up
+.a0f4	a9 1b		lda #$1b			lda 	#$1B
+.a0f6	ea		nop				nop
+.a0f7	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0f9	a9 00		lda #$00			lda 	#$00						; colour RAM at $1F800-1FFFF (2kb)
+.a0fb	85 0b		sta $0b				sta 	IF_FarPtr+3
+.a0fd	a9 01		lda #$01			lda 	#$01
+.a0ff	85 0a		sta $0a				sta 	IF_FarPtr+2
+.a101	a9 f8		lda #$f8			lda 	#$F8
+.a103	85 09		sta $09				sta 	IF_FarPtr+1
+.a105	a9 00		lda #$00			lda 	#$00
+.a107	85 08		sta $08				sta 	IF_FarPtr+0
+.a109	a3 00		ldz #$00			ldz 	#0
+.a10b					_EXTClearColorRam:
+.a10b	a9 05		lda #$05			lda 	#5							; fill that with this colour.
+.a10d	ea		nop				nop
+.a10e	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a110	3b		dez				dez
+.a111	d0 f8		bne $a10b			bne 	_EXTClearColorRam
+.a113	e6 09		inc $09				inc 	IF_FarPtr+1
+.a115	d0 f4		bne $a10b			bne 	_EXTClearColorRam
+.a117	a2 00		ldx #$00			ldx 	#0 							; copy PET Font into memory.
+.a119					_EXTCopyCBMFont:
+.a119	bd 5a a1	lda $a15a,x			lda 	IF_CBMFont,x 				; +$800 uses the lower case c/set
+.a11c	9d 00 08	sta $0800,x			sta 	IF_CharSet,x
+.a11f	49 ff		eor #$ff			eor 	#$FF
+.a121	9d 00 0c	sta $0c00,x			sta 	IF_CharSet+$400,x
+.a124	bd 5a a2	lda $a25a,x			lda 	IF_CBMFont+$100,x
+.a127	9d 00 09	sta $0900,x			sta 	IF_CharSet+$100,x
+.a12a	49 ff		eor #$ff			eor 	#$FF
+.a12c	9d 00 0d	sta $0d00,x			sta 	IF_CharSet+$500,x
+.a12f	bd 5a a3	lda $a35a,x			lda 	IF_CBMFont+$200,x
+.a132	9d 00 0a	sta $0a00,x			sta 	IF_CharSet+$200,x
+.a135	49 ff		eor #$ff			eor 	#$FF
+.a137	9d 00 0e	sta $0e00,x			sta 	IF_CharSet+$600,x
+.a13a	bd 5a a4	lda $a45a,x			lda 	IF_CBMFont+$300,x
+.a13d	9d 00 0b	sta $0b00,x			sta 	IF_CharSet+$300,x
+.a140	49 ff		eor #$ff			eor 	#$FF
+.a142	9d 00 0f	sta $0f00,x			sta 	IF_CharSet+$700,x
+.a145	ca		dex				dex
+.a146	d0 d1		bne $a119			bne 	_EXTCopyCBMFont
+.a148	a9 3b		lda #$3b			lda 	#$3F-4  					; puts ROM back in the map (the -4)
+.a14a	85 01		sta $01				sta 	$01
+.a14c	a9 00		lda #$00			lda 	#$00						; do not map bytes 0000-7FFF
+.a14e	a2 00		ldx #$00			ldx 	#$00
+.a150	a0 00		ldy #$00			ldy 	#$00 						; 8000-FFFF offset by $2000
+.a152	a3 f2		ldz #$f2			ldz 	#$F2
+.a154	5c		map				map
+.a155	ea		nop				eom
+.a156	7a		ply				ply 								; restore and exit.
+.a157	fa		plx				plx
+.a158	68		pla				pla
+.a159	60		rts				rts
+.a15a					IF_CBMFont:
+>a15a	1c 22 4a 56 4c 20 1e 00				.binary "pet-font.bin"
+>a162	18 24 42 7e 42 42 42 00 7c 22 22 3c 22 22 7c 00
+>a172	1c 22 40 40 40 22 1c 00 78 24 22 22 22 24 78 00
+>a182	7e 40 40 78 40 40 7e 00 7e 40 40 78 40 40 40 00
+>a192	1c 22 40 4e 42 22 1c 00 42 42 42 7e 42 42 42 00
+>a1a2	1c 08 08 08 08 08 1c 00 0e 04 04 04 04 44 38 00
+>a1b2	42 44 48 70 48 44 42 00 40 40 40 40 40 40 7e 00
+>a1c2	42 66 5a 5a 42 42 42 00 42 62 52 4a 46 42 42 00
+>a1d2	18 24 42 42 42 24 18 00 7c 42 42 7c 40 40 40 00
+>a1e2	18 24 42 42 4a 24 1a 00 7c 42 42 7c 48 44 42 00
+>a1f2	3c 42 40 3c 02 42 3c 00 3e 08 08 08 08 08 08 00
+>a202	42 42 42 42 42 42 3c 00 42 42 42 24 24 18 18 00
+>a212	42 42 42 5a 5a 66 42 00 42 42 24 18 24 42 42 00
+>a222	22 22 22 1c 08 08 08 00 7e 02 04 18 20 40 7e 00
+>a232	3c 20 20 20 20 20 3c 00 00 40 20 10 08 04 02 00
+>a242	3c 04 04 04 04 04 3c 00 00 08 1c 2a 08 08 08 08
+>a252	00 00 10 20 7f 20 10 00 00 00 00 00 00 00 00 00
+>a262	08 08 08 08 00 00 08 00 24 24 24 00 00 00 00 00
+>a272	24 24 7e 24 7e 24 24 00 08 1e 28 1c 0a 3c 08 00
+>a282	00 62 64 08 10 26 46 00 30 48 48 30 4a 44 3a 00
+>a292	04 08 10 00 00 00 00 00 04 08 10 10 10 08 04 00
+>a2a2	20 10 08 08 08 10 20 00 08 2a 1c 3e 1c 2a 08 00
+>a2b2	00 08 08 3e 08 08 00 00 00 00 00 00 00 08 08 10
+>a2c2	00 00 00 7e 00 00 00 00 00 00 00 00 00 18 18 00
+>a2d2	00 02 04 08 10 20 40 00 3c 42 46 5a 62 42 3c 00
+>a2e2	08 18 28 08 08 08 3e 00 3c 42 02 0c 30 40 7e 00
+>a2f2	3c 42 02 1c 02 42 3c 00 04 0c 14 24 7e 04 04 00
+>a302	7e 40 78 04 02 44 38 00 1c 20 40 7c 42 42 3c 00
+>a312	7e 42 04 08 10 10 10 00 3c 42 42 3c 42 42 3c 00
+>a322	3c 42 42 3e 02 04 38 00 00 00 08 00 00 08 00 00
+>a332	00 00 08 00 00 08 08 10 0e 18 30 60 30 18 0e 00
+>a342	00 00 7e 00 7e 00 00 00 70 18 0c 06 0c 18 70 00
+>a352	3c 42 02 0c 10 00 10 00 00 00 00 00 ff 00 00 00
+>a362	08 1c 3e 7f 7f 1c 3e 00 10 10 10 10 10 10 10 10
+>a372	00 00 00 ff 00 00 00 00 00 00 ff 00 00 00 00 00
+>a382	00 ff 00 00 00 00 00 00 00 00 00 00 00 ff 00 00
+>a392	20 20 20 20 20 20 20 20 04 04 04 04 04 04 04 04
+>a3a2	00 00 00 00 e0 10 08 08 08 08 08 04 03 00 00 00
+>a3b2	08 08 08 10 e0 00 00 00 80 80 80 80 80 80 80 ff
+>a3c2	80 40 20 10 08 04 02 01 01 02 04 08 10 20 40 80
+>a3d2	ff 80 80 80 80 80 80 80 ff 01 01 01 01 01 01 01
+>a3e2	00 3c 7e 7e 7e 7e 3c 00 00 00 00 00 00 00 ff 00
+>a3f2	36 7f 7f 7f 3e 1c 08 00 40 40 40 40 40 40 40 40
+>a402	00 00 00 00 03 04 08 08 81 42 24 18 18 24 42 81
+>a412	00 3c 42 42 42 42 3c 00 08 1c 2a 77 2a 08 08 00
+>a422	02 02 02 02 02 02 02 02 08 1c 3e 7f 3e 1c 08 00
+>a432	08 08 08 08 ff 08 08 08 a0 50 a0 50 a0 50 a0 50
+>a442	08 08 08 08 08 08 08 08 00 00 01 3e 54 14 14 00
+>a452	ff 7f 3f 1f 0f 07 03 01 00 00 00 00 00 00 00 00
+>a462	f0 f0 f0 f0 f0 f0 f0 f0 00 00 00 00 ff ff ff ff
+>a472	ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff
+>a482	80 80 80 80 80 80 80 80 aa 55 aa 55 aa 55 aa 55
+>a492	01 01 01 01 01 01 01 01 00 00 00 00 aa 55 aa 55
+>a4a2	ff fe fc f8 f0 e0 c0 80 03 03 03 03 03 03 03 03
+>a4b2	08 08 08 08 0f 08 08 08 00 00 00 00 0f 0f 0f 0f
+>a4c2	08 08 08 08 0f 00 00 00 00 00 00 00 f8 08 08 08
+>a4d2	00 00 00 00 00 00 ff ff 00 00 00 00 0f 08 08 08
+>a4e2	08 08 08 08 ff 00 00 00 00 00 00 00 ff 08 08 08
+>a4f2	08 08 08 08 f8 08 08 08 c0 c0 c0 c0 c0 c0 c0 c0
+>a502	e0 e0 e0 e0 e0 e0 e0 e0 07 07 07 07 07 07 07 07
+>a512	ff ff 00 00 00 00 00 00 ff ff ff 00 00 00 00 00
+>a522	00 00 00 00 00 ff ff ff 01 01 01 01 01 01 01 ff
+>a532	00 00 00 00 f0 f0 f0 f0 0f 0f 0f 0f 00 00 00 00
+>a542	08 08 08 08 f8 00 00 00 f0 f0 f0 f0 00 00 00 00
+>a552	f0 f0 f0 f0 0f 0f 0f 0f 1c 22 4a 56 4c 20 1e 00
+>a562	18 24 42 7e 42 42 42 00 7c 22 22 3c 22 22 7c 00
+>a572	1c 22 40 40 40 22 1c 00 78 24 22 22 22 24 78 00
+>a582	7e 40 40 78 40 40 7e 00 7e 40 40 78 40 40 40 00
+>a592	1c 22 40 4e 42 22 1c 00 42 42 42 7e 42 42 42 00
+>a5a2	1c 08 08 08 08 08 1c 00 0e 04 04 04 04 44 38 00
+>a5b2	42 44 48 70 48 44 42 00 40 40 40 40 40 40 7e 00
+>a5c2	42 66 5a 5a 42 42 42 00 42 62 52 4a 46 42 42 00
+>a5d2	18 24 42 42 42 24 18 00 7c 42 42 7c 40 40 40 00
+>a5e2	18 24 42 42 4a 24 1a 00 7c 42 42 7c 48 44 42 00
+>a5f2	3c 42 40 3c 02 42 3c 00 3e 08 08 08 08 08 08 00
+>a602	42 42 42 42 42 42 3c 00 42 42 42 24 24 18 18 00
+>a612	42 42 42 5a 5a 66 42 00 42 42 24 18 24 42 42 00
+>a622	22 22 22 1c 08 08 08 00 7e 02 04 18 20 40 7e 00
+>a632	3c 20 20 20 20 20 3c 00 00 40 20 10 08 04 02 00
+>a642	3c 04 04 04 04 04 3c 00 00 08 1c 2a 08 08 08 08
+>a652	00 00 10 20 7f 20 10 00 00 00 00 00 00 00 00 00
+>a662	08 08 08 08 00 00 08 00 24 24 24 00 00 00 00 00
+>a672	24 24 7e 24 7e 24 24 00 08 1e 28 1c 0a 3c 08 00
+>a682	00 62 64 08 10 26 46 00 30 48 48 30 4a 44 3a 00
+>a692	04 08 10 00 00 00 00 00 04 08 10 10 10 08 04 00
+>a6a2	20 10 08 08 08 10 20 00 08 2a 1c 3e 1c 2a 08 00
+>a6b2	00 08 08 3e 08 08 00 00 00 00 00 00 00 08 08 10
+>a6c2	00 00 00 7e 00 00 00 00 00 00 00 00 00 18 18 00
+>a6d2	00 02 04 08 10 20 40 00 3c 42 46 5a 62 42 3c 00
+>a6e2	08 18 28 08 08 08 3e 00 3c 42 02 0c 30 40 7e 00
+>a6f2	3c 42 02 1c 02 42 3c 00 04 0c 14 24 7e 04 04 00
+>a702	7e 40 78 04 02 44 38 00 1c 20 40 7c 42 42 3c 00
+>a712	7e 42 04 08 10 10 10 00 3c 42 42 3c 42 42 3c 00
+>a722	3c 42 42 3e 02 04 38 00 00 00 08 00 00 08 00 00
+>a732	00 00 08 00 00 08 08 10 0e 18 30 60 30 18 0e 00
+>a742	00 00 7e 00 7e 00 00 00 70 18 0c 06 0c 18 70 00
+>a752	3c 42 02 0c 10 00 10 00 00 00 00 00 ff 00 00 00
+>a762	00 00 38 04 3c 44 3a 00 40 40 5c 62 42 62 5c 00
+>a772	00 00 3c 42 40 42 3c 00 02 02 3a 46 42 46 3a 00
+>a782	00 00 3c 42 7e 40 3c 00 0c 12 10 7c 10 10 10 00
+>a792	00 00 3a 46 46 3a 02 3c 40 40 5c 62 42 42 42 00
+>a7a2	08 00 18 08 08 08 1c 00 04 00 0c 04 04 04 44 38
+>a7b2	40 40 44 48 50 68 44 00 18 08 08 08 08 08 1c 00
+>a7c2	00 00 76 49 49 49 49 00 00 00 5c 62 42 42 42 00
+>a7d2	00 00 3c 42 42 42 3c 00 00 00 5c 62 62 5c 40 40
+>a7e2	00 00 3a 46 46 3a 02 02 00 00 5c 62 40 40 40 00
+>a7f2	00 00 3e 40 3c 02 7c 00 10 10 7c 10 10 12 0c 00
+>a802	00 00 42 42 42 46 3a 00 00 00 42 42 42 24 18 00
+>a812	00 00 41 49 49 49 36 00 00 00 42 24 18 24 42 00
+>a822	00 00 42 42 46 3a 02 3c 00 00 7e 04 18 20 7e 00
+>a832	08 08 08 08 ff 08 08 08 a0 50 a0 50 a0 50 a0 50
+>a842	08 08 08 08 08 08 08 08 cc cc 33 33 cc cc 33 33
+>a852	cc 66 33 99 cc 66 33 99 00 00 00 00 00 00 00 00
+>a862	f0 f0 f0 f0 f0 f0 f0 f0 00 00 00 00 ff ff ff ff
+>a872	ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff
+>a882	80 80 80 80 80 80 80 80 aa 55 aa 55 aa 55 aa 55
+>a892	01 01 01 01 01 01 01 01 00 00 00 00 aa 55 aa 55
+>a8a2	99 33 66 cc 99 33 66 cc 03 03 03 03 03 03 03 03
+>a8b2	08 08 08 08 0f 08 08 08 00 00 00 00 0f 0f 0f 0f
+>a8c2	08 08 08 08 0f 00 00 00 00 00 00 00 f8 08 08 08
+>a8d2	00 00 00 00 00 00 ff ff 00 00 00 00 0f 08 08 08
+>a8e2	08 08 08 08 ff 00 00 00 00 00 00 00 ff 08 08 08
+>a8f2	08 08 08 08 f8 08 08 08 c0 c0 c0 c0 c0 c0 c0 c0
+>a902	e0 e0 e0 e0 e0 e0 e0 e0 07 07 07 07 07 07 07 07
+>a912	ff ff 00 00 00 00 00 00 ff ff ff 00 00 00 00 00
+>a922	00 00 00 00 00 ff ff ff 01 02 44 48 50 60 40 00
+>a932	00 00 00 00 f0 f0 f0 f0 0f 0f 0f 0f 00 00 00 00
+>a942	08 08 08 08 f8 00 00 00 f0 f0 f0 f0 00 00 00 00
+>a952	f0 f0 f0 f0 0f 0f 0f 0f
+
+;******  Return to file: interface_test.asm
+
+
+;******  Processing file: interface_tools.asm
+
+=$200					IFT_XCursor = $200								; current logical position on screen
+=$201					IFT_YCursor = $201
+=$202					IFT_Buffer = $202 								; scroll copy buffer.
+.a95a					IFT_ClearScreen:
+.a95a	48		pha				pha
+.a95b	da		phx				phx
+.a95c	5a		phy				phy
+.a95d	20 00 a0	jsr $a000			jsr 	IF_Home 					; home cursor
+.a960	a2 19		ldx #$19			ldx 	#IF_Height 					; this many lines.
+.a962					_IFT_CS0:
+.a962	a0 50		ldy #$50			ldy 	#IF_Width 					; this many chars/line
+.a964					_IFT_CS1:
+.a964	a9 20		lda #$20			lda 	#' '						; clear line.
+.a966	20 2a a0	jsr $a02a			jsr 	IF_Write
+.a969	88		dey				dey
+.a96a	d0 f8		bne $a964			bne 	_IFT_CS1
+.a96c	20 0f a0	jsr $a00f			jsr 	IF_NewLine 					; next line down
+.a96f	ca		dex				dex
+.a970	d0 f0		bne $a962			bne 	_IFT_CS0
+.a972	7a		ply				ply
+.a973	fa		plx				plx
+.a974	68		pla				pla
+.a975					IFT_HomeCursor:
+.a975	48		pha				pha
+.a976	20 00 a0	jsr $a000			jsr 	IF_Home
+.a979	a9 00		lda #$00			lda 	#0
+.a97b	8d 00 02	sta $0200			sta 	IFT_XCursor
+.a97e	8d 01 02	sta $0201			sta 	IFT_YCursor
+.a981	68		pla				pla
+.a982	60		rts				rts
+.a983					IFT_PrintCharacter:
+.a983	c9 0d		cmp #$0d			cmp 	#13 						; handle newline.
+.a985	f0 18		beq $a99f			beq 	IFT_NewLine
+.a987	48		pha				pha
+.a988	20 b7 a9	jsr $a9b7			jsr 	IFT_UpperCase 				; make upper case
+.a98b	29 3f		and #$3f			and 	#63 						; make 6 bit PETSCII
+.a98d	20 2a a0	jsr $a02a			jsr 	IF_Write 					; write out.
+.a990	ee 00 02	inc $0200			inc 	IFT_XCursor 				; bump x cursor
+.a993	ad 00 02	lda $0200			lda 	IFT_XCursor 				; reached RHS ?
+.a996	c9 50		cmp #$50			cmp 	#IF_Width
+.a998	d0 03		bne $a99d			bne 	_IFT_PCNotEOL
+.a99a	20 9f a9	jsr $a99f			jsr 	IFT_NewLine 				; if so do new line.
+.a99d					_IFT_PCNotEOL:
+.a99d	68		pla				pla
+.a99e	60		rts				rts
+.a99f					IFT_NewLine:
+.a99f	48		pha				pha
+.a9a0	20 0f a0	jsr $a00f			jsr 	IF_NewLine 					; new line on actual screen.
+.a9a3	a9 00		lda #$00			lda 	#0 							; reset x position
+.a9a5	8d 00 02	sta $0200			sta 	IFT_XCursor
+.a9a8	ee 01 02	inc $0201			inc 	IFT_YCursor 				; move down.
+.a9ab	ad 01 02	lda $0201			lda 	IFT_YCursor
+.a9ae	c9 19		cmp #$19			cmp 	#IF_Height 					; reached bottom.
+.a9b0	d0 03		bne $a9b5			bne 	_IFT_NL_NotEOS
+.a9b2	20 c2 a9	jsr $a9c2			jsr 	IFT_Scroll 					; scroll screen up.
+.a9b5					_IFT_NL_NotEOS:
+.a9b5	68		pla				pla
+.a9b6	60		rts				rts
+.a9b7					IFT_UpperCase:
+.a9b7	c9 61		cmp #$61			cmp 	#"a"
+.a9b9	90 06		bcc $a9c1			bcc 	_IFT_UCExit
+.a9bb	c9 7b		cmp #$7b			cmp 	#"z"+1
+.a9bd	b0 02		bcs $a9c1			bcs 	_IFT_UCExit
+.a9bf	49 20		eor #$20			eor 	#$20
+.a9c1					_IFT_UCExit:
+.a9c1	60		rts				rts
+.a9c2					IFT_Scroll:
+.a9c2	48		pha				pha 								; save AXY
+.a9c3	da		phx				phx
+.a9c4	5a		phy				phy
+.a9c5	a2 00		ldx #$00			ldx 	#0 							; start scrolling.
+.a9c7					_IFT_SLoop:
+.a9c7	20 f9 a9	jsr $a9f9			jsr 	_IFT_ScrollLine 			; scroll line X+1 => X
+.a9ca	e8		inx				inx
+.a9cb	e0 18		cpx #$18			cpx 	#IF_Height-1				; do whole screen
+.a9cd	d0 f8		bne $a9c7			bne 	_IFT_SLoop
+.a9cf	a9 18		lda #$18			lda 	#IF_Height-1 				; move to X = 0,Y = A
+.a9d1	20 e7 a9	jsr $a9e7			jsr 	_IFT_Move0A
+.a9d4	a2 50		ldx #$50			ldx 	#IF_Width 					; blank line
+.a9d6					_IFT_SBlank:
+.a9d6	a9 20		lda #$20			lda 	#32
+.a9d8	20 2a a0	jsr $a02a			jsr 	IF_Write
+.a9db	ca		dex				dex
+.a9dc	d0 f8		bne $a9d6			bne 	_IFT_SBlank
+.a9de	a9 18		lda #$18			lda 	#IF_Height-1 				; move to X = 0,Y = A
+.a9e0	20 e7 a9	jsr $a9e7			jsr 	_IFT_Move0A
+.a9e3	68		pla				pla
+.a9e4	fa		plx				plx
+.a9e5	7a		ply				ply
+.a9e6	60		rts				rts
+.a9e7					_IFT_Move0A:
+.a9e7	aa		tax				tax
+.a9e8	20 75 a9	jsr $a975			jsr 	IFT_HomeCursor
+.a9eb	e0 00		cpx #$00			cpx 	#0
+.a9ed	f0 09		beq $a9f8			beq 	_IFT_MOAExit
+.a9ef					_IFT_MOALoop:
+.a9ef	20 0f a0	jsr $a00f			jsr 	IF_NewLine
+.a9f2	ee 01 02	inc $0201			inc 	IFT_YCursor
+.a9f5	ca		dex				dex
+.a9f6	d0 f7		bne $a9ef			bne		_IFT_MOALoop
+.a9f8					_IFT_MOAExit:
+.a9f8	60		rts				rts
+.a9f9					_IFT_ScrollLine:
+.a9f9	da		phx				phx
+.a9fa	da		phx				phx
+.a9fb	8a		txa				txa 								; copy line into buffer.
+.a9fc	1a		inc a				inc 	a 							; next line down.
+.a9fd	20 e7 a9	jsr $a9e7			jsr 	_IFT_Move0A
+.aa00	a2 00		ldx #$00			ldx 	#0
+.aa02					_IFTScrollCopy1:
+.aa02	20 21 a0	jsr $a021			jsr 	IF_Read
+.aa05	9d 02 02	sta $0202,x			sta 	IFT_Buffer,x
+.aa08	e8		inx				inx
+.aa09	e0 50		cpx #$50			cpx 	#IF_Width
+.aa0b	d0 f5		bne $aa02			bne 	_IFTScrollCopy1
+.aa0d	68		pla				pla
+.aa0e	20 e7 a9	jsr $a9e7			jsr 	_IFT_Move0A
+.aa11	a2 00		ldx #$00			ldx 	#0
+.aa13					_IFTScrollCopy2:
+.aa13	bd 02 02	lda $0202,x			lda 	IFT_Buffer,x
+.aa16	20 2a a0	jsr $a02a			jsr 	IF_Write
+.aa19	e8		inx				inx
+.aa1a	e0 50		cpx #$50			cpx 	#IF_Width
+.aa1c	d0 f5		bne $aa13			bne 	_IFTScrollCopy2
+.aa1e	fa		plx				plx
+.aa1f	60		rts				rts
+.aa20					IFT_GetKeyCursor:
+.aa20	20 28 aa	jsr $aa28			jsr 	_IFT_FlipCursor 			; reverse current
+.aa23					_IFT_GKCWait:
+.aa23	20 4b a0	jsr $a04b			jsr 	IF_GetKey 					; get key
+.aa26	f0 fb		beq $aa23			beq 	_IFT_GKCWait
+.aa28					_IFT_FlipCursor:
+.aa28	48		pha				pha 								; save
+.aa29	20 21 a0	jsr $a021			jsr 	IF_Read 					; read
+.aa2c	20 33 a0	jsr $a033			jsr 	IF_LeftOne
+.aa2f	49 80		eor #$80			eor 	#$80 						; reverse
+.aa31	20 2a a0	jsr $a02a			jsr 	IF_Write 					; write
+.aa34	20 33 a0	jsr $a033			jsr 	IF_LeftOne
+.aa37	68		pla				pla
+.aa38	60		rts				rts
+
+;******  Return to file: interface_test.asm
+
+.aa39					TestCode:
+.aa39	a2 ff		ldx #$ff			ldx 		#$FF 					; empty stack
+.aa3b	9a		txs				txs
+.aa3c	20 92 a0	jsr $a092			jsr 		IF_Reset 				; reset external interface
+.aa3f	20 5a a9	jsr $a95a			jsr 		IFT_ClearScreen
+.aa42	20 20 aa	jsr $aa20	WaitKey:jsr 		IFT_GetKeyCursor		; get a single key.
+.aa45	20 83 a9	jsr $a983			jsr 		IFT_PrintCharacter
+.aa48	80 f8		bra $aa42			bra 		WaitKey
+.aa4a	29 0f		and #$0f	Nibble:	and 		#15
+.aa4c	c9 0a		cmp #$0a			cmp 		#10
+.aa4e	90 03		bcc $aa53			bcc 		_NINoSub
+.aa50	38		sec				sec
+.aa51	e9 39		sbc #$39			sbc 		#48+9
+.aa53					_NINoSub:
+.aa53	18		clc				clc
+.aa54	69 30		adc #$30			adc 		#48
+.aa56	20 2a a0	jsr $a02a			jsr 		IF_Write
+.aa59	60		rts				rts
+.aa5a					DummyRoutine:
+.aa5a	40		rti				rti
+>fffa	5a aa						.word		DummyRoutine
+>fffc	39 aa						.word 		TestCode
+>fffe	5a aa						.word 		DummyRoutine
+
+;******  End of listing

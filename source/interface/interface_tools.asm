@@ -12,6 +12,7 @@
 IFT_XCursor = $200								; current logical position on screen
 IFT_YCursor = $201
 IFT_Buffer = $202 								; scroll copy buffer.
+IFT_LineBuffer = $280 							; line input buffer.
 
 ; *******************************************************************************************
 ;
@@ -176,3 +177,26 @@ _IFTScrollCopy2:
 		bne 	_IFTScrollCopy2
 		plx
 		rts		
+
+; *******************************************************************************************
+;
+;							Get key, showing cursor highlight
+;
+; *******************************************************************************************
+
+IFT_GetKeyCursor:
+		jsr 	_IFT_FlipCursor 			; reverse current
+_IFT_GKCWait:
+		jsr 	IF_GetKey 					; get key
+		beq 	_IFT_GKCWait
+_IFT_FlipCursor:
+		pha 								; save
+		jsr 	IF_Read 					; read
+		jsr 	IF_LeftOne
+		eor 	#$80 						; reverse
+		jsr 	IF_Write 					; write
+		jsr 	IF_LeftOne
+		pla
+		rts
+
+

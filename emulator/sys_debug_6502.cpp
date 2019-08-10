@@ -112,8 +112,9 @@ void DBGXRender(int *address,int showDisplay) {
 			for (int y = 0;y < ys;y++)
 		 	{
 		 		#define CP(c) ((c) >> 4)
-		 		int colour = 0xFFF;
-		 		int ch = CPUReadFarMemory(x+y*80+0xB000) ;
+		 		int colour = 0x0C0;
+		 		int ch = CPUReadFarMemory(x+y*80+0xB000);
+		 		int rvs = (ch & 0x80) ? 0xFF:0x00;
 		 		ch = ch & 0x7F;
 		 		int xc = x1 + x * 8 * size;
 		 		int yc = y1 + y * 16 * size;
@@ -123,7 +124,7 @@ void DBGXRender(int *address,int showDisplay) {
 		 		for (int x = 0;x < 8;x++) {														// 5 Across
 		 			rc.x = xc + x * size;
 		 			for (int y = 0;y < 8;y++) {													// 7 Down
-		 				int f = character_rom[cp+y+0x800];
+		 				int f = character_rom[cp+y]^rvs;
 		 				rc.y = yc + y * 2 * size;
 		 				if (f & (0x80 >> x)) {		
 		 					GFXRectangle(&rc,colour);			
