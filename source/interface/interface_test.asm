@@ -27,13 +27,13 @@ TestCode:
 		jsr 		IF_Reset 				; reset external interface
 
 		jsr 		IFT_ClearScreen
-
+Next:	jsr 		IFT_NewLine
 WaitKey:jsr 		IFT_ReadLine
 		jsr 		IFT_NewLine
 		ldx 		#0
 _OutLine:
 		lda 		$280,x
-		beq 		_OutLine
+		beq 		Next
 		jsr 		IFT_PrintCharacter
 		lda 		#"_"
 		jsr 		IFT_PrintCharacter
