@@ -123,7 +123,7 @@ _IFT_SLoop:
 		cpx 	#IF_Height-1				; do whole screen
 		bne 	_IFT_SLoop
 		lda 	#IF_Height-1 				; move to X = 0,Y = A
-		jsr 	_IFT_Move0A
+		jsr 	IF_SetYPos
 		ldx 	#IF_Width 					; blank line
 _IFT_SBlank:
 		lda 	#32
@@ -132,25 +132,10 @@ _IFT_SBlank:
 		bne 	_IFT_SBlank
 		;
 		lda 	#IF_Height-1 				; move to X = 0,Y = A
-		jsr 	_IFT_Move0A
+		jsr 	IF_SetYPos
 		pla
 		plx
 		ply
-		rts
-		;
-		;		Move to (0,A)
-		;
-_IFT_Move0A:
-		tax
-		jsr 	IFT_HomeCursor
-		cpx 	#0
-		beq 	_IFT_MOAExit
-_IFT_MOALoop:
-		jsr 	IF_NewLine
-		inc 	IFT_YCursor
-		dex 	
-		bne		_IFT_MOALoop
-_IFT_MOAExit:
 		rts
 
 _IFT_ScrollLine:
@@ -158,7 +143,7 @@ _IFT_ScrollLine:
 		phx
 		txa 								; copy line into buffer.
 		inc 	a 							; next line down.
-		jsr 	_IFT_Move0A
+		jsr 	IF_SetYPos
 		ldx 	#0
 _IFTScrollCopy1:
 		jsr 	IF_Read
@@ -167,7 +152,7 @@ _IFTScrollCopy1:
 		cpx 	#IF_Width
 		bne 	_IFTScrollCopy1
 		pla
-		jsr 	_IFT_Move0A
+		jsr 	IF_SetYPos
 		ldx 	#0
 _IFTScrollCopy2:
 		lda 	IFT_Buffer,x
@@ -177,6 +162,29 @@ _IFTScrollCopy2:
 		bne 	_IFTScrollCopy2
 		plx
 		rts		
+
+; *******************************************************************************************
+;
+;										Move to (0,A)
+;
+; *******************************************************************************************
+
+IF_SetYPos:
+		pha
+		phx
+		tax
+		jsr 	IFT_HomeCursor
+		cpx 	#0
+		beq 	_IFT_MOAExit
+_IFT_MOALoop:
+		jsr 	IF_NewLine
+		inc 	IFT_YCursor
+		dex 	
+		bne		_IFT_MOALoop
+_IFT_MOAExit:	
+		plx
+		pla
+		rts
 
 ; *******************************************************************************************
 ;
@@ -199,4 +207,114 @@ _IFT_FlipCursor:
 		pla
 		rts
 
+; *******************************************************************************************
+;
+;									Read line into buffer
+;
+; *******************************************************************************************
 
+IFT_ReadLine:
+		pha
+_IFT_RLLoop:
+		jsr 	IFT_GetKeyCursor 			; get keystroke
+		cmp 	#13							; return
+		beq 	_IFT_RLExit 
+		cmp 	#32 						; control character
+		bcc 	_IFT_Control 
+		jsr 	IFT_PrintCharacter
+		bra 	_IFT_RLLoop
+		;
+_IFT_Control:	
+		cmp 	#"A"-64
+		beq 	_IFT_Left
+		cmp 	#"D"-64
+		beq 	_IFT_Right
+		cmp 	#"W"-64
+		beq 	_IFT_Up
+		cmp 	#"S"-64
+		beq 	_IFT_Down
+		cmp 	#"H"-64
+		beq 	_IFT_Backspace
+		cmp 	#"Z"-64
+		bne 	_IFT_RLLoop		
+		jsr 	IFT_ClearScreen				; clear CTL-Z
+		bra 	_IFT_RLLoop
+		;
+_IFT_Backspace:		
+		lda 	IFT_XCursor 				; check not start of line.
+		beq 	_IFT_RLLoop
+		jsr 	IF_LeftOne
+		lda 	#" "						; overwrite with space, drop through to left
+		jsr 	IF_Write
+		;
+_IFT_Left:
+		dec 	IFT_XCursor 				; left CTL-W
+		bpl 	_IFT_Reposition
+		lda 	#IF_Width-1
+_IFT_SetX:		
+		sta 	IFT_XCursor
+		bra 	_IFT_Reposition
+_IFT_Right:									; right CTL-D
+		inc 	IFT_XCursor
+		lda 	IFT_XCursor
+		eor 	#IF_Width		
+		beq 	_IFT_SetX
+		bra 	_IFT_Reposition
+		;
+_IFT_Up:									; up CTL-A
+		dec 	IFT_YCursor
+		bpl 	_IFT_Reposition
+		lda 	#IF_Height-1
+_IFT_SetY:			
+		sta 	IFT_YCursor
+		bra 	_IFT_Reposition
+_IFT_Down:									; down CTL-S
+		inc 	IFT_YCursor
+		lda 	IFT_YCursor
+		eor 	#IF_Height
+		beq 	_IFT_SetY
+		;
+_IFT_Reposition:
+		lda 	IFT_XCursor 				; put cursor at xCursor,yCursor
+		pha
+		lda 	IFT_YCursor
+		jsr 	IF_SetYPos
+		pla
+		tax
+		cpx 	#0
+		beq 	_IFT_RLLoop
+_IFT_MoveRight:
+		jsr 	IF_Read
+		inc 	IFT_XCursor
+		dex
+		bne 	_IFT_MoveRight
+		jmp 	_IFT_RLLoop
+		;		
+_IFT_RLExit:								; CR-Exit.
+		lda 	IFT_YCursor 				; go to start of line.
+		jsr 	IF_SetYPos
+		ldx 	#0 							; read text into line.
+_IFT_RLRead:
+		jsr 	IF_Read
+		clc 								; convert back to ASCII.
+		eor 	#$20
+		adc 	#$20
+		sta 	IFT_LineBuffer,x
+		inx
+		cpx 	#IF_Width
+		bne 	_IFT_RLRead
+		;
+_IFT_RL_Trim:								; trim RH spaces
+		dex 	 							; previous char
+		bmi 	_IFT_Found 					; gone too far
+		lda 	IFT_LineBuffer,x			; go back if space
+		cmp 	#" "
+		beq 	_IFT_RL_Trim
+_IFT_Found:		
+		inx 								; forward to non-space
+		lda 	#0							; make it ASCIIZ
+		sta 	IFT_LineBuffer,x
+		pla
+		ldx 	#IFT_LineBuffer & $FF 		; put address in YX
+		ldy 	#IFT_LineBuffer >> 8
+		rts

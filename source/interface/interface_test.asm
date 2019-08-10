@@ -28,20 +28,17 @@ TestCode:
 
 		jsr 		IFT_ClearScreen
 
-WaitKey:jsr 		IFT_GetKeyCursor		; get a single key.
+WaitKey:jsr 		IFT_ReadLine
+		jsr 		IFT_NewLine
+		ldx 		#0
+_OutLine:
+		lda 		$280,x
+		beq 		_OutLine
 		jsr 		IFT_PrintCharacter
-		bra 		WaitKey
-
-Nibble:	and 		#15
-		cmp 		#10
-		bcc 		_NINoSub
-		sec
-		sbc 		#48+9
-_NINoSub:
-		clc
-		adc 		#48
-		jsr 		IF_Write
-		rts		
+		lda 		#"_"
+		jsr 		IFT_PrintCharacter
+		inx
+		bra 		_OutLine		
 
 DummyRoutine:
 		rti

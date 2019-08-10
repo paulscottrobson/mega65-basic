@@ -1,6 +1,5 @@
 TODO
 ====
-- 	Input Line
 - 	Simple Monitor (4510 specific,model on TIM.)
 -	Implement the Floating Point code and test it and the supporting routines
 	including macros to support 65816 and/or 4510 opcodes.
@@ -9,3 +8,4 @@ TODO
 
 Fixes
 =====
+- 	Proper insert/delete in line editing.
