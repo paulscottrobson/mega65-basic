@@ -1,6 +1,11 @@
 TODO
 ====
 - 	Simple Monitor (4510 specific,model on TIM.)
+		Memory dump command (M command)
+		Implement read-in (; command)
+		Implement load-data (: command)
+		Implement G
+		Make BRK work.
 -	Implement the Floating Point code and test it and the supporting routines
 	including macros to support 65816 and/or 4510 opcodes.
 -	Write the expression evaluator
@@ -9,3 +14,4 @@ TODO
 Fixes
 =====
 - 	Proper insert/delete in line editing.
+- 	Add X to Monitor (warm start)
