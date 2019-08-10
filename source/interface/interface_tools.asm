@@ -133,9 +133,9 @@ _IFT_SBlank:
 		;
 		lda 	#IF_Height-1 				; move to X = 0,Y = A
 		jsr 	IF_SetYPos
-		pla
-		plx
 		ply
+		plx
+		pla
 		rts
 
 _IFT_ScrollLine:
