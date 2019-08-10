@@ -14,30 +14,23 @@
 
 		* = $A000
 
+		.if 		INTERFACE=1
 		.include 	"interface_emu.asm"
-;		.include 	"interface_mega65.asm"
+		.else
+		.include 	"interface_mega65.asm"
+		.endif
+		.include 	"interface_tools.asm"
 
 TestCode:
 		ldx 		#$FF 					; empty stack
 		txs
 		jsr 		IF_Reset 				; reset external interface
 
-		jsr 		IF_Home 				; home r/w cursor to (0,0)
+		jsr 		IFT_ClearScreen
 
-WaitKey:jsr 		IF_Home
-		jsr 		IF_CheckBreak
-		jsr 		IF_Write
-		jsr 		IF_NewLine
-		jsr 		IF_GetKey				; get a single key.
+WaitKey:jsr 		IF_GetKey				; get a single key.
 		beq 		WaitKey
-		pha 								; write out what it is.
-		lsr 		a
-		lsr 		a
-		lsr 		a
-		lsr 		a
-		jsr 		Nibble
-		pla
-		jsr 		Nibble
+		jsr 		IFT_PrintCharacter
 		bra 		WaitKey
 
 Nibble:	and 		#15
@@ -57,5 +50,3 @@ DummyRoutine:
 		.word		DummyRoutine
 		.word 		TestCode
 		.word 		DummyRoutine
-
-
