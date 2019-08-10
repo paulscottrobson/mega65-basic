@@ -20,6 +20,7 @@
 #define OPC_ASL()
 #define OPC_ASR()
 #define OPC_BIT()
+#define OPC_BRK()
 #define OPC_BSR()
 #define OPC_CMP()
 #define OPC_CPX()

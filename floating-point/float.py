@@ -28,7 +28,6 @@ import random,re
 #
 # *******************************************************************************************
 
-
 class Float(object):
 	#
 	#		Initialise number class. The real thing holds integer, float or string.
@@ -392,4 +391,3 @@ if __name__ == "__main__":
 #	W 		Write A out.
 #	; 		Ignore rest of line.
 #
-

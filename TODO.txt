@@ -1,11 +1,11 @@
 TODO
 ====
-- 	Simple Monitor (4510 specific,model on TIM.)
-		Implement read-in registers (; command)
-		Implement load-data (: command)
-		Implement G
-		Make BRK work.
 -	Implement the Floating Point code and test it and the supporting routines
+		Integer -> B
+		B -> Float B
+		B -> Integer B
+		B -> A
+		
 	including macros to support 65816 and/or 4510 opcodes.
 -	Write the expression evaluator
 - 	Write the basic executor and tokeniser and implement ASSERT.

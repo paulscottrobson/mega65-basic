@@ -41,7 +41,7 @@ static void sub8Bit(void);
 #define EAC_ZERO() 		FETCH8();MAR = BASEPAGE(MBR)
 #define EAC_ZEROX()		EAC_ZERO();MAR = BASEPAGE((MAR + X) & 0xFF)
 #define EAC_ZEROY()		EAC_ZERO();MAR = BASEPAGE((MAR + Y) & 0xFF)
-#define EAC_INDX()		FETCH8();MAR = BASEPAGE((MBR + X) & 0xFF);READ16()
+#define EAC_INDX()		FETCH8();MAR = BASEPAGE((MBR + X) & 0xFF);READ16();MAR = MBR
 #define EAC_INDY()		FETCH8();MAR = BASEPAGE(MBR);READ16();MAR = (MBR + Y) & 0xFFFF
 #define EAC_INDZ()		FETCH8();MAR = BASEPAGE(MBR);READ16();MAR = (MBR + Z) & 0xFFFF
 //
@@ -90,6 +90,8 @@ static void sub8Bit(void);
 #define OPC_JMP()		PC = MAR
 #define OPC_JSR()		temp16 = MAR;PC--;PUSH8(PC >> 8);PUSH8(PC & 0xFF);PC = temp16
 
+#define OPC_BRK()       PC++;PUSH8(PC >> 8);PUSH8(PC & 0xFF);PUSH8(makeStatus()|0x10);MAR=0xFFFE;READ16(); PC=MBR 
+
 #define OPC_LDA()		A = MBR & 0xFF;SETNZ(A)
 #define OPC_LDX()		X = MBR & 0xFF;SETNZ(X)
 #define OPC_LDY()		Y = MBR & 0xFF;SETNZ(Y)
@@ -133,7 +135,7 @@ static BYTE8 makeStatus(void) {
 //		Set individual flags fom status byte for PLP and RTI.
 //
 static void setStatus(BYTE8 p) {
-	N_FLAG = (p >> 7) & 1;V_FLAG = (p >> 6) & 1;E_FLAG = (p >> 5) & 1;B_FLAG = (p >> 4) & 1;
+	N_FLAG = (p >> 7) & 1;V_FLAG = (p >> 6) & 1;E_FLAG = (p >> 5) & 1;
 	D_FLAG = (p >> 3) & 1;I_FLAG = (p >> 2) & 1;Z_FLAG = (p >> 1) & 1;C_FLAG = (p >> 0) & 1;
 }
 

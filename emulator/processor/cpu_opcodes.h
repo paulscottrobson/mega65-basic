@@ -2,6 +2,10 @@
 // This file is generated from 65CE02.txt
 //
 
+case 0x00: // *** $00 brk implied ***
+	OPC_BRK();
+	break;
+
 case 0x01: // *** $01 ora indx ***
 	EAC_INDX();READ8();OPC_ORA();
 	break;

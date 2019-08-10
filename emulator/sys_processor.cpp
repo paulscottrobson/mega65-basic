@@ -26,10 +26,10 @@
 //														CPU / Memory
 // *******************************************************************************************************************************
 
-static BYTE8 A,X,Y,Z,SP,tmp8;														// 6502 A,X,Y and Stack registers
+static BYTE8 A,X,Y,Z,tmp8;															// 6502 A,X,Y and Stack registers
 static BYTE8 C_FLAG,I_FLAG,B_FLAG,E_FLAG,											// Values representing status reg
 			 D_FLAG,V_FLAG,Z_FLAG,N_FLAG;
-static WORD16 PC,temp16,MAR,MBR;													// Program Counter.
+static WORD16 PC,temp16,MAR,MBR,SP;													// Program Counter.
 static BYTE8 ramMemory[RAMSIZE];													// Memory at $0000 upwards
 static LONG32 cycles,MAR32;															// Cycle Count.
 
@@ -69,6 +69,7 @@ static void resetProcessor(void) {
 	PC = MBR;
 	I_FLAG = 1;
 	D_FLAG = 0;
+	E_FLAG = 0;
 }
 
 void CPUReset(void) {

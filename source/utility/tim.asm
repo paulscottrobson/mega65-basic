@@ -32,9 +32,15 @@ TIM_ShowPrompt:
 		beq 	TIM_ShowRegisters
 		cmp 	#"M" 						; show memory
 		beq 	TIM_ShowMemory
-		bra 	TIM_Error
-
-
+		cmp 	#"G"						; execute
+		beq 	TIM_Execute
+		cmp 	#":"						; load memory
+		beq 	TIM_GoLoadMemory
+		cmp 	#";" 						; load registers
+		bne 	TIM_Error
+		jmp 	TIM_UpdateRegisters
+TIM_GoLoadMemory:
+		jmp 	TIM_LoadMemory
 
 ; *******************************************************************************************
 ;
@@ -75,6 +81,29 @@ _TIMSM_NoCarry:
 		bpl 	_TIMSM_Start
 _TIMSM_Ends:		
 		jmp 	TIM_NewCommand
+
+; *******************************************************************************************
+;
+;										Execute
+;	
+; *******************************************************************************************
+
+TIM_Execute:	
+		jsr 	TIM_GetHex 					; get the execute address
+		bcs 	TIM_Error
+		nop
+		ldx 	TIM_SP 						; set up S
+		txs
+		lda 	TIM_SR 						; Status for PLP
+		pha
+		lda 	TIM_A 						; restore AXYZ
+		ldx 	TIM_X
+		ldy 	TIM_Y
+		.if 	CPU=4510 					; can we load Z ?
+		ldz 	TIM_Z
+		.endif
+		plp 								; and PS Byte.
+		jmp 	(zTemp3)					; go execute
 
 ; *******************************************************************************************
 ;
@@ -226,3 +255,99 @@ _TIM_GHCFail:
 _TIM_GHCExit:		
 		rts
 
+; *******************************************************************************************
+;
+;										Break Vector
+;		
+; *******************************************************************************************
+
+TIM_BreakVector:
+		phx									; save X/A on stack
+		pha 								
+		tsx 								; X points to S
+		lda 	$0103,x 					; PSW saved on stack.
+		and 	#$10 						; check stacked B Flag
+		bne 	_TIMBreak					; if set, it's BRK
+		pla 								; abandon
+		plx
+		rti
+_TIMBreak:
+		pla
+		sta 	TIM_A
+		plx
+		stx 	TIM_X
+		sty 	TIM_Y		
+		.if 	CPU=4510 					; can we save Z ?
+		stz 	TIM_Z
+		.endif
+		pla 								; get P
+		sta 	TIM_SR
+		pla
+		sta 	TIM_PC+1 					; save calling address
+		pla
+		sta 	TIM_PC 						; high byte
+		;
+		lda 	TIM_PC+1 					; dec PC to point right.
+		bne 	_TIMDecrement
+		dec 	TIM_PC
+_TIMDecrement:		
+		dec 	TIM_PC+1
+		tsx
+		stx 	TIM_SP 						; and SP
+		ldx 	#$FF 						; reset SP
+		txs
+		jmp 	TIM_Start
+
+; *******************************************************************************************
+;
+;									Update Registers
+;
+; *******************************************************************************************
+
+TIM_UpdateRegisters:
+		jsr 	TIM_GetHex 					; PC
+		bcs 	_TIMURFail
+		lda 	zTemp3 		
+		sta 	Tim_PC+1
+		lda 	zTemp3+1
+		sta 	Tim_PC
+		jsr 	TIM_GetHex 					; ignore IRQ
+		bcs 	_TIMURFail
+		ldx 	#0
+_TIM_URLoop:
+		jsr 	TIM_GetHex 					; registers
+		bcs 	_TIMURFail
+		lda 	zTemp3
+		sta 	Tim_SR,x 
+		inx
+		cpx 	#Tim_SP-Tim_SR+1
+		bne 	_TIM_URLoop			
+		jmp 	TIM_NewCommand
+_TIMURFail:	
+		jmp 	TIM_Error		
+
+; *******************************************************************************************
+;
+;										Load Memory
+;
+; *******************************************************************************************
+
+TIM_LoadMemory:
+		jsr 	TIM_GetHex 					; target address => zTemp2
+		lda 	zTemp3
+		sta 	zTemp2
+		lda 	zTemp3+1
+		sta 	zTemp2+1
+_TIM_LMLoop:
+		jsr 	TIM_GetHex 					; next byte ?
+		bcs 	_TIMLMDone 					; no more
+		ldx 	#0							; write out.
+		lda 	zTemp3
+		sta 	(zTemp2,x)
+		inc 	zTemp2 						; bump address
+		bne 	_TIM_LMLoop
+		inc 	zTemp2+1
+		bra 	_TIM_LMLoop
+		;
+_TIMLMDone:
+		jmp 	TIM_NewCommand					

@@ -21,6 +21,17 @@ zTemp1:		.word ?							; temporary pointers
 zTemp2:		.word ?
 zTemp3:		.word ?
 
+A_Mantissa	.dword ?						; floating point registers
+A_Exponent	.byte ?
+A_Sign 		.byte ?
+A_Type 		.byte ?
+
+B_Mantissa	.dword ?
+B_Exponent	.byte ?
+B_Sign 		.byte ?
+B_Type 		.byte ?
+
+
 ; *******************************************************************************************
 ;
 ;									   Buffers etc.
@@ -37,6 +48,4 @@ Tim_X:		.byte ?
 Tim_Y:		.byte ?
 Tim_Z:		.byte ?
 Tim_SP:		.byte ?							; Stack Pointer
-
-
 

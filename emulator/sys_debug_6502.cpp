@@ -44,8 +44,8 @@ void DBGXRender(int *address,int showDisplay) {
 
 	#define DN(v,w) GFXNumber(GRID(24,n++),v,16,w,GRIDSIZE,DBGC_DATA,-1)			// Helper macro
 
-	DN(s->a,2);DN(s->x,2);DN(s->y,2);DN(s->z,2);DN(s->pc,4);DN(s->sp+0x100,4);DN(s->status,2);DN(s->cycles,4);
-	DN(s->sign,1);DN(s->overflow,1);DN(s->decimal,1);DN(s->interruptDisable,1);DN(s->zero,1);DN(s->carry,1);
+	DN(s->a,2);DN(s->x,2);DN(s->y,2);DN(s->z,2);DN(s->pc,4);DN(s->sp,4);DN(s->status,2);DN(s->cycles,4);
+	DN(s->sign,1);DN(s->overflow,1);DN(s->brk,1);DN(s->interruptDisable,1);DN(s->zero,1);DN(s->carry,1);
 
 	n = 0;
 	int a = address[1];																// Dump Memory.
