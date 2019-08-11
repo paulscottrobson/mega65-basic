@@ -26,6 +26,7 @@
 		.include 	"arithmetic/fpadd.asm"
 		.include 	"arithmetic/fpmultiply.asm"
 		.include 	"arithmetic/fpdivide.asm"
+		.include 	"arithmetic/fpparts.asm"
 
 StartROM:
 		ldx 		#$FF 					; empty stack
@@ -33,21 +34,20 @@ StartROM:
 		jsr 		IF_Reset 				; reset external interface
 		jsr 		IFT_ClearScreen
 
-		ldx 		#31
-		ldy 		#255
+		ldx 		#21
+		ldy 		#0
 		jsr 		FPUSetBFromXY
 		ldx 		#B_Mantissa-A_Mantissa
 		jsr 		FPUToFloatX
 		jsr 		FPUCopyBToA		
-		ldx 		#7
+		ldx 		#10
 		ldy 		#0
 		jsr 		FPUSetBFromXY
 		ldx 		#B_Mantissa-A_Mantissa
 		jsr 		FPUToFloatX
 		jsr 		FPDivide
-		ldx 		#0
-		jsr 		FPUTimes10X
-;		jsr 		FPUATOInteger
+		jsr 		FPFractionalPart
+		;jsr 		FPIntegerPart
 		.byte 		$5C
 
 ERR_Handler:

@@ -1,7 +1,7 @@
 
 ; 64tass Turbo Assembler Macro V1.54.1900 listing file
 ; 64tass -q -c -D CPU=6502 -D INTERFACE=1 -b -L rom.lst -o rom.bin basic.asm
-; Sun Aug 11 15:45:53 2019
+; Sun Aug 11 19:49:47 2019
 
 ;Offset	;Hex		;Monitor	;Source
 
@@ -732,7 +732,7 @@
 .a463	68		pla				pla
 .a464	60		rts				rts
 .a465					FP_Overflow:
-.a465	20 fb a6	jsr $a6fb			jsr 	ERR_Handler
+.a465	20 61 a7	jsr $a761			jsr 	ERR_Handler
 >a468	46 6c 6f 61 74 69 6e 67				.text 	"Floating Point overflow",0
 >a470	20 50 6f 69 6e 74 20 6f 76 65 72 66 6c 6f 77 00
 .a480					FPUTimes10X:
@@ -1006,7 +1006,7 @@
 ;******  Processing file: arithmetic/fpdivide.asm
 
 .a630					FPD_IsDivZero:
-.a630	20 fb a6	jsr $a6fb			jsr 		ERR_Handler
+.a630	20 61 a7	jsr $a761			jsr 		ERR_Handler
 >a633	44 69 76 69 73 69 6f 6e				.text 		"Division by zero",0
 >a63b	20 62 79 20 7a 65 72 6f 00
 .a644					FPDivide:
@@ -1097,32 +1097,107 @@
 
 ;******  Return to file: basic.asm
 
-.a6ce					StartROM:
-.a6ce	a2 ff		ldx #$ff			ldx 		#$FF 					; empty stack
-.a6d0	9a		txs				txs
-.a6d1	20 00 a0	jsr $a000			jsr 		IF_Reset 				; reset external interface
-.a6d4	20 4a a0	jsr $a04a			jsr 		IFT_ClearScreen
-.a6d7	a2 1f		ldx #$1f			ldx 		#31
-.a6d9	a0 ff		ldy #$ff			ldy 		#255
-.a6db	20 d4 a3	jsr $a3d4			jsr 		FPUSetBFromXY
-.a6de	a2 08		ldx #$08			ldx 		#B_Mantissa-A_Mantissa
-.a6e0	20 f8 a3	jsr $a3f8			jsr 		FPUToFloatX
-.a6e3	20 ea a3	jsr $a3ea			jsr 		FPUCopyBToA
-.a6e6	a2 07		ldx #$07			ldx 		#7
-.a6e8	a0 00		ldy #$00			ldy 		#0
-.a6ea	20 d4 a3	jsr $a3d4			jsr 		FPUSetBFromXY
-.a6ed	a2 08		ldx #$08			ldx 		#B_Mantissa-A_Mantissa
-.a6ef	20 f8 a3	jsr $a3f8			jsr 		FPUToFloatX
-.a6f2	20 44 a6	jsr $a644			jsr 		FPDivide
-.a6f5	a2 00		ldx #$00			ldx 		#0
-.a6f7	20 80 a4	jsr $a480			jsr 		FPUTimes10X
->a6fa	5c						.byte 		$5C
-.a6fb					ERR_Handler:
-.a6fb	80 fe		bra $a6fb			bra 		ERR_Handler
-.a6fd					NMIHandler:
-.a6fd	40		rti				rti
->fffa	fd a6						.word		NMIHandler
->fffc	ce a6						.word 		StartROM
+
+;******  Processing file: arithmetic/fpparts.asm
+
+.a6ce					FPFractionalPart:
+.a6ce	a5 14		lda $14				lda 	A_Exponent 					; if exponent -ve then then unchanged
+.a6d0	38		sec				sec 								; this flag tells us to keep the fractional part
+.a6d1	10 0d		bpl $a6e0			bpl 	FPGetPart
+.a6d3	60		rts				rts
+.a6d4					FPIntegerPart:
+.a6d4	a5 14		lda $14				lda 	A_Exponent 					; if exponent -ve then the result is zero.
+.a6d6	18		clc				clc 								; this flag says keep the integer part.
+.a6d7	10 07		bpl $a6e0			bpl 	FPGetPart
+.a6d9	48		pha				pha
+.a6da	a9 ff		lda #$ff			lda 	#$FF 						; set the Zero Flag
+.a6dc	85 16		sta $16				sta 	A_Zero
+.a6de	68		pla				pla
+.a6df	60		rts				rts
+.a6e0					FPGetPart:
+.a6e0	48		pha				pha
+.a6e1	da		phx				phx 								; save X
+.a6e2	a5 16		lda $16				lda 	A_Zero 						; if zero, return zero
+.a6e4	d0 4d		bne $a733			bne 	_FPGP_Exit 					; then do nothing.
+.a6e6	08		php				php 								; save the action flag on the stack.
+.a6e7	a9 ff		lda #$ff			lda 	#$FF 						; set the mask long to -1
+.a6e9	85 26		sta $26				sta 	zLTemp1+0
+.a6eb	85 27		sta $27				sta 	zLTemp1+1
+.a6ed	85 28		sta $28				sta 	zLTemp1+2
+.a6ef	85 29		sta $29				sta 	zLTemp1+3
+.a6f1	a6 14		ldx $14				ldx 	A_Exponent 					; the number of shifts.
+.a6f3	f0 11		beq $a706			beq 	_FPGP_NoShift 				; ... if any
+.a6f5	e0 20		cpx #$20			cpx 	#32
+.a6f7	90 02		bcc $a6fb			bcc 	_FPGP_NotMax
+.a6f9	a2 20		ldx #$20			ldx 	#32 						; max of 32.
+.a6fb					_FPGP_NotMax:
+.a6fb	46 29		lsr $29				lsr 	3+zLTemp1
+.a6fd	66 28		ror $28				ror 	2+zLTemp1
+.a6ff	66 27		ror $27				ror 	1+zLTemp1
+.a701	66 26		ror $26				ror 	0+zLTemp1
+.a703	ca		dex				dex
+.a704	d0 f5		bne $a6fb			bne 	_FPGP_NotMax
+.a706					_FPGP_NoShift:
+.a706	a2 03		ldx #$03			ldx 	#3 							; now mask each part in turn.
+.a708					_FPGP_MaskLoop:
+.a708	b5 26		lda $26,x			lda 	zlTemp1,x 					; get mask.
+.a70a	28		plp				plp 								; if CC we keep the top part, so we
+.a70b	08		php				php		 							; flip the mask.
+.a70c	b0 02		bcs $a710			bcs		_FPGP_NoFlip
+.a70e	49 ff		eor #$ff			eor 	#$FF
+.a710					_FPGP_NoFlip:
+.a710	35 10		and $10,x			and 	A_Mantissa,x
+.a712	95 10		sta $10,x			sta 	A_Mantissa,x
+.a714	ca		dex				dex
+.a715	10 f1		bpl $a708			bpl 	_FPGP_MaskLoop
+.a717	28		plp				plp 								; get action flag on the stack
+.a718	90 04		bcc $a71e			bcc 	_FPGP_NotFractional 		; if fractional part always return +ve.
+.a71a	a9 00		lda #$00			lda 	#0
+.a71c	85 15		sta $15				sta 	A_Sign
+.a71e					_FPGP_NotFractional:
+.a71e	a5 10		lda $10				lda 	A_Mantissa 							; check if \1 zero
+.a720	05 11		ora $11				ora 	A_Mantissa+1
+.a722	05 12		ora $12				ora 	A_Mantissa+2
+.a724	05 13		ora $13				ora 	A_Mantissa+3
+.a726	f0 07		beq $a72f			beq 	_FPGP_Zero 					; if zero, return zero
+.a728	a2 00		ldx #$00			ldx 	#0							; otherwise normalise
+.a72a	20 cf a4	jsr $a4cf			jsr 	FPUNormaliseX
+.a72d	80 04		bra $a733			bra 	_FPGP_Exit 					; and exit
+.a72f					_FPGP_Zero:
+.a72f	a9 ff		lda #$ff			lda 	#$FF 						; set zero flag
+.a731	85 16		sta $16				sta 	A_Zero
+.a733					_FPGP_Exit:
+.a733	fa		plx				plx
+.a734	68		pla				pla
+.a735	60		rts				rts
+
+;******  Return to file: basic.asm
+
+.a736					StartROM:
+.a736	a2 ff		ldx #$ff			ldx 		#$FF 					; empty stack
+.a738	9a		txs				txs
+.a739	20 00 a0	jsr $a000			jsr 		IF_Reset 				; reset external interface
+.a73c	20 4a a0	jsr $a04a			jsr 		IFT_ClearScreen
+.a73f	a2 15		ldx #$15			ldx 		#21
+.a741	a0 00		ldy #$00			ldy 		#0
+.a743	20 d4 a3	jsr $a3d4			jsr 		FPUSetBFromXY
+.a746	a2 08		ldx #$08			ldx 		#B_Mantissa-A_Mantissa
+.a748	20 f8 a3	jsr $a3f8			jsr 		FPUToFloatX
+.a74b	20 ea a3	jsr $a3ea			jsr 		FPUCopyBToA
+.a74e	a2 0a		ldx #$0a			ldx 		#10
+.a750	a0 00		ldy #$00			ldy 		#0
+.a752	20 d4 a3	jsr $a3d4			jsr 		FPUSetBFromXY
+.a755	a2 08		ldx #$08			ldx 		#B_Mantissa-A_Mantissa
+.a757	20 f8 a3	jsr $a3f8			jsr 		FPUToFloatX
+.a75a	20 44 a6	jsr $a644			jsr 		FPDivide
+.a75d	20 ce a6	jsr $a6ce			jsr 		FPFractionalPart
+>a760	5c						.byte 		$5C
+.a761					ERR_Handler:
+.a761	80 fe		bra $a761			bra 		ERR_Handler
+.a763					NMIHandler:
+.a763	40		rti				rti
+>fffa	63 a7						.word		NMIHandler
+>fffc	36 a7						.word 		StartROM
 >fffe	4f a3						.word 		TIM_BreakVector
 
 ;******  End of listing
