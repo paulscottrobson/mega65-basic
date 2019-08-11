@@ -84,3 +84,9 @@ ror32 	.macro 								; ror32 \1
 		ror 	0+\1
 		.endm		
 
+ror32x 	.macro 								; ror32 \1,x
+		ror 	3+\1,x
+		ror 	2+\1,x
+		ror 	1+\1,x
+		ror 	0+\1,x
+		.endm		

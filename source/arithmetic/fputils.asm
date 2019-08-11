@@ -135,6 +135,50 @@ FP_Overflow:
 		jsr 	ERR_Handler
 		.text 	"Floating Point overflow",0
 
+
+; *******************************************************************************************
+;
+;									Multiply AM,X times 10
+;
+; *******************************************************************************************
+
+FPUTimes10X:
+		lda 	A_Mantissa+0,x 				; copy mantissa to ZLTemp1
+		sta 	ZLTemp1+0
+		lda 	A_Mantissa+1,x
+		sta 	ZLTemp1+1,x
+		lda 	A_Mantissa+2,x
+		sta 	ZLTemp1+2,x
+		lda 	A_Mantissa+3,x
+		sta 	ZLTemp1+3,x
+		#lsr32 	ZLTemp1 					; divide by 4
+		#lsr32 	ZLTemp1
+		;
+		clc
+		lda 	A_Mantissa+0,x
+		adc 	ZLTemp1+0,x
+		sta 	A_Mantissa+0,x
+		lda 	A_Mantissa+1,x
+		adc 	ZLTemp1+1,x
+		sta 	A_Mantissa+1,x
+		lda 	A_Mantissa+2,x
+		adc 	ZLTemp1+2,x
+		sta 	A_Mantissa+2,x
+		lda 	A_Mantissa+3,x
+		adc 	ZLTemp1+3,x
+		sta 	A_Mantissa+3,x
+
+		bcc 	_FPUTimes10
+		ror32x	A_Mantissa 					; rotate carry back into mantissa
+		inc 	A_Exponent,x				; fix exponent
+_FPUTimes10:
+		lda 	A_Exponent,x 				; fix up x 2^3
+		clc
+		adc 	#3
+		sta 	A_Exponent,x
+		bvs 	FP_Overflow 				; error
+		rts
+
 ; *******************************************************************************************
 ;
 ;						Normalise float at offset X from A_Mantissa
@@ -184,4 +228,3 @@ FPUIntegerNegateX:
 		sta 	A_Mantissa+3,X
 		pla
 		rts
-

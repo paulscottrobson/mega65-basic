@@ -276,6 +276,9 @@ class Float(object):
 	def times10(self):
 		assert self.type == Float.FLOAT 					# float in ?
 		self.value = self.value + (self.value >> 2)
+		if self.value > self.IMASK:							# carry out.
+			self.value >>= 1
+			self.exponent += 1
 		self.exponent += 3
 		return self		
 
@@ -377,7 +380,7 @@ Float.ISIGN = 0x80000000 									# various constants.
 Float.IMASK = 0xFFFFFFFF
 
 if __name__ == "__main__":
-	for s in ["42","0.000000021471","987654.321","1.44e-5"]:
+	for s in ["31","42","0.000000021471","987654.321","1.44e-5"]:
 		print(s)
 		f = Float().convertFromString(s).toFloat()
 		print(f.toString())
