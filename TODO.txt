@@ -1,11 +1,11 @@
 TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
-		Integer -> B
-		B -> Float B
 		B -> Integer B
-		B -> A
-		
+		+ - * / 
+		= test		
+		string->float, float->string rethink maybe.
+		run 'compiled FP' code.
 	including macros to support 65816 and/or 4510 opcodes.
 -	Write the expression evaluator
 - 	Write the basic executor and tokeniser and implement ASSERT.
@@ -14,3 +14,8 @@ Fixes
 =====
 - 	Proper insert/delete in line editing.
 - 	Add X to Monitor (warm start BASIC)
+- 	FP optimisations for 4510 extended.
+		Mantissa Copier
+		Normaliser left shift.
+		Integer negation (used often enough ?)
+		

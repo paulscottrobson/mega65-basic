@@ -17,20 +17,25 @@
 
 		* = $10
 
-zTemp1:		.word ?							; temporary pointers
-zTemp2:		.word ?
-zTemp3:		.word ?
-
 A_Mantissa	.dword ?						; floating point registers
-A_Exponent	.byte ?
+A_Exponent	.byte ?							; showab.py is dependent on these being at $10,$18
 A_Sign 		.byte ?
+A_Zero 		.byte ?
 A_Type 		.byte ?
 
 B_Mantissa	.dword ?
 B_Exponent	.byte ?
 B_Sign 		.byte ?
+B_Zero 		.byte ?
 B_Type 		.byte ?
 
+Type_Integer = $00 							; type IDs, not tested directly.
+Type_Float = $80
+Type_String = $40
+
+zTemp1:		.word ?							; temporary pointers
+zTemp2:		.word ?
+zTemp3:		.word ?
 
 ; *******************************************************************************************
 ;

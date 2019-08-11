@@ -8,5 +8,6 @@ popd
 if [ $? -eq 0 ]
 then
 	../emulator/em4510 rom.bin go
+	python showab.py
 	rm rom.lst rom.bin
 fi

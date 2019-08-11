@@ -310,6 +310,10 @@ case 0x5b: // *** $5b tab implied ***
 	OPC_TAB();
 	break;
 
+case 0x5c: // *** $5c map implied ***
+	OPC_MAP();
+	break;
+
 case 0x5d: // *** $5d eor absx ***
 	EAC_ABSX();READ8();OPC_EOR();
 	break;

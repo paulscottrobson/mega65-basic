@@ -23,7 +23,7 @@ eacMap = { 	"$nn":"zero","$nnnn":"abs","$nn,x":"zerox","$nn,y":"zeroy",
 #
 #			List of non-implemented instructions
 #
-remove = [ "asw", "dew", "inw", "row", "map", "aug", "phw","smb","rmb","bbs","bbr","trb","tsb" ]
+remove = [ "asw", "dew", "inw", "row", "aug", "phw","smb","rmb","bbs","bbr","trb","tsb" ]
 #
 #			Categories of instruction.
 #

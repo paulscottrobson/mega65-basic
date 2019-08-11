@@ -36,6 +36,7 @@
 #define OPC_LDY()
 #define OPC_LDZ()
 #define OPC_LSR()
+#define OPC_MAP()
 #define OPC_NEG()
 #define OPC_NOP()
 #define OPC_ORA()

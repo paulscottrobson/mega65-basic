@@ -113,6 +113,8 @@ static void sub8Bit(void);
 #define OPC_TXS()		SP = (SP & 0xFF00)|X; if (E_FLAG == 0) SP = X|0x100;
 #define OPC_TYS()		SP = (SP & 0x00FF)|(Y << 8); if (E_FLAG == 0) SP = (SP & 0xFF)|0x100;
 
+#define OPC_MAP()       CPUExit()
+
 #define TEST_BCC()		(C_FLAG == 0)
 #define TEST_BCS()		(C_FLAG != 0)
 #define TEST_BEQ()		(Z_FLAG != 0)

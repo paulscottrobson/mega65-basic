@@ -13,10 +13,6 @@
 		nop
 		.include 	"data.asm"
 		* = $A000
-
-		nop
-		inx
-		
 		.if 		INTERFACE=1
 		.include 	"interface/interface_emu.asm"
 		.else
@@ -25,6 +21,7 @@
 		;
 		.include 	"interface/interface_tools.asm"
 		.include 	"utility/tim.asm"
+		.include 	"arithmetic/fputils.asm"
 
 StartROM:
 		ldx 		#$FF 					; empty stack
@@ -32,7 +29,14 @@ StartROM:
 		jsr 		IF_Reset 				; reset external interface
 
 		jsr 		IFT_ClearScreen
-		jmp 		TIM_Start
+
+		ldx 		#$00
+		ldy 		#$FF
+		jsr 		FPUSetBFromXY
+		jsr 		FPUBToFloat
+		jsr 		FPUCopyBToA		
+		jsr 		FPUBToInteger
+		.byte 		$5C
 
 NMIHandler:
 		rti
