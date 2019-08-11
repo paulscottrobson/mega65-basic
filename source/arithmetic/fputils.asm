@@ -78,7 +78,10 @@ FPUBToFloat:
 		;
 		lda 	B_Mantissa+3 				; signed integer ?
 		bpl		_FPUBPositive
-		jsr 	FPUIntegerNegateB 			; do B = -B in integer, so +ve mantissa
+		phx
+		ldx 	#B_Mantissa-A_Mantissa
+		jsr 	FPUIntegerNegateX 			; do B = -B in integer, so +ve mantissa
+		plx
 		dec 	B_Sign 						; set the sign byte to $FF
 _FPUBPositive:		
 		;
@@ -95,12 +98,55 @@ _FPUBExit:
 
 ; *******************************************************************************************
 ;
-;									Convert B to Integer
+;									Convert A to Integer
 ;
 ; *******************************************************************************************
 
-FPUBToInteger:
+FPUAToInteger:
+		pha
+		lda 	A_Type 						; if already integer, exit
+		beq 	_FPUATOI_Exit
+		lda 	#Type_Integer 				; make type zero (integer)
+		sta 	A_Type
+		lda 	A_Zero						; if zero, return zero.
+		bne 	_FPUATOI_Zero		
+		lda 	A_Exponent 					; check -ve exponent or < 32
+		bmi 	_FPUAToIOk
+		cmp 	#32 						; sign exponent >= 32, overflow.
+		bcs 	_FPUATOIOverflow
+_FPUAToIOk:		
+		;
+_FPUAToIToInteger:
+		lda 	A_Exponent 					; reached ^32
+		cmp 	#32
+		beq 	_FPUAtoICheckSign 			; check sign needs fixing up.
+		inc 	A_Exponent 					; increment Exponent
+		lsr 	A_Mantissa+3 				; shift mantissa right
+		ror 	A_Mantissa+2
+		ror 	A_Mantissa+1
+		ror 	A_Mantissa+0
+		bra 	_FPUAToIToInteger 			; keep going.
+		;
+_FPUAtoICheckSign:
+		lda 	A_Sign 						; check sign
+		beq 	_FPUAToI_Exit 				; exit if unsigned.
+		phx
+		ldx 	#0
+		jsr 	FPUIntegerNegateX 			; otherwise negate the shifted mantissa
+		plx
+		bra 	_FPUATOI_Exit
+		;
+_FPUATOI_Zero:
+		lda 	#0 							; return zero integer.
+		sta 	A_Mantissa+0		
+		sta 	A_Mantissa+1
+		sta 	A_Mantissa+2		
+		sta 	A_Mantissa+3		
+_FPUATOI_Exit:
+		pla
 		rts
+_FPUATOIOverflow:
+		jmp 	ERR_Overflow
 
 ; *******************************************************************************************
 ;
@@ -133,24 +179,25 @@ _FPUNExit:
 
 ; *******************************************************************************************
 ;
-;								Negate B as a 32 bit integer
+;								Negate AM,X as a 32 bit integer
 ;
 ; *******************************************************************************************
 
-FPUIntegerNegateB:
+FPUIntegerNegateX:
 		pha
 		sec
 		lda 	#0
-		sbc 	B_Mantissa+0
-		sta 	B_Mantissa+0
+		sbc 	A_Mantissa+0,x
+		sta 	A_Mantissa+0,x
 		lda 	#0
-		sbc 	B_Mantissa+1
-		sta 	B_Mantissa+1
+		sbc 	A_Mantissa+1,x
+		sta 	A_Mantissa+1,x
 		lda 	#0
-		sbc 	B_Mantissa+2
-		sta 	B_Mantissa+2
+		sbc 	A_Mantissa+2,x
+		sta 	A_Mantissa+2,x
 		lda 	#0
-		sbc 	B_Mantissa+3
-		sta 	B_Mantissa+3
+		sbc 	A_Mantissa+3,x
+		sta 	A_Mantissa+3,X
 		pla
 		rts
+

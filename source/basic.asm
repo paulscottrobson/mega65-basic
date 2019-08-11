@@ -30,13 +30,16 @@ StartROM:
 
 		jsr 		IFT_ClearScreen
 
-		ldx 		#$00
-		ldy 		#$FF
+		ldx 		#$0
+		ldy 		#$0
 		jsr 		FPUSetBFromXY
 		jsr 		FPUBToFloat
 		jsr 		FPUCopyBToA		
-		jsr 		FPUBToInteger
+		jsr 		FPUAToInteger
 		.byte 		$5C
+
+ERR_Overflow:
+		bra 		ERR_Overflow
 
 NMIHandler:
 		rti

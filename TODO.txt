@@ -1,7 +1,6 @@
 TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
-		B -> Integer B
 		+ - * / 
 		= test		
 		string->float, float->string rethink maybe.
@@ -17,5 +16,7 @@ Fixes
 - 	FP optimisations for 4510 extended.
 		Mantissa Copier
 		Normaliser left shift.
+		Float->Integer right shift.
 		Integer negation (used often enough ?)
+		Float<->Integer conversions can use byte copies under certain circumstances.
 		
