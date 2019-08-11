@@ -24,26 +24,27 @@
 		.include 	"arithmetic/fpmacros.asm"
 		.include 	"arithmetic/fputils.asm"
 		.include 	"arithmetic/fpadd.asm"
+		.include 	"arithmetic/fpmultiply.asm"
+		.include 	"arithmetic/fpdivide.asm"
 
 StartROM:
 		ldx 		#$FF 					; empty stack
 		txs
 		jsr 		IF_Reset 				; reset external interface
-
 		jsr 		IFT_ClearScreen
 
-		ldx 		#31
-		ldy 		#0
+		ldx 		#$2A
+		ldy 		#$00
 		jsr 		FPUSetBFromXY
 		ldx 		#B_Mantissa-A_Mantissa
 		jsr 		FPUToFloatX
 		jsr 		FPUCopyBToA		
-		ldx 		#31
-		ldy 		#0
+		ldx 		#$03
+		ldy 		#$00
 		jsr 		FPUSetBFromXY
 		ldx 		#B_Mantissa-A_Mantissa
 		jsr 		FPUToFloatX
-		jsr 		FPSubtract
+		jsr 		FPDivide
 		;jsr 		FPUATOInteger
 		.byte 		$5C
 

@@ -26,8 +26,7 @@ floatA = Float().setInteger(0).toFloat()
 floatB = Float().setInteger(0).toFloat()
 while script != "":
 	cmd = script[0]
-	s
-		cript = script[1:]
+	script = script[1:]
 	#print(lineNumber,"<"+cmd+">",floatA.toString(),floatB.toString())
 	if cmd == "L":
 		m = re.match("^\\[(.*?)\\](.*)$",script)

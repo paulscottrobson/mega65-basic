@@ -1,9 +1,8 @@
 TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
-		* / 
-		= test		
-		string->float, float->string rethink maybe.
+		/ 
+		= test toint tofrac string->float, float->string rethink maybe.
 		run 'compiled FP' code.
 	including macros to support 65816 and/or 4510 opcodes.
 -	Write the expression evaluator

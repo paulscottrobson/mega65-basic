@@ -216,9 +216,6 @@ class Float(object):
 			productLeft = productLeft >> 1
 		#
 		self.value = productLeft 							# result.
-		if self.value > 0xFFFFFFFF:							# carry out ?
-			self.value >>= 1
-			self.exponent += 1
 		#
 		self.sign = self.sign ^ fp.sign 					# work out result sign.
 		self.normalize()									# normalize the result.
@@ -273,6 +270,14 @@ class Float(object):
 			self.zero = 0
 		self.normalize()
 		return self
+	#
+	#		Multiply float by 10
+	#
+	def times10(self):
+		assert self.type == Float.FLOAT 					# float in ?
+		self.value = self.value + (self.value >> 2)
+		self.exponent += 3
+		return self		
 	#
 	#		Convert float to string.
 	#
@@ -371,23 +376,9 @@ Float.ISIGN = 0x80000000 									# various constants.
 Float.IMASK = 0xFFFFFFFF
 
 if __name__ == "__main__":
-	s = "0.000000021471"
-	s = "987654321"
-	s = "1.44e-5"
-	print(s,float(s)*float(s))
-	f = Float().convertFromString(s).toFloat()
-	print(f.toString())
-	f1 = Float().copy(f)
-	f.mulFloat(f1)
-	print(f.toString())
-	print(f.convertToString())
-#
-#	L 		Load a number into B (follows in [])
-#	C 		Copy B to A
-#	F 		Fractional(A) -> A
-#	I 		Integer(A) -> A
-#	+-*/	A = A <op> B
-#	Q 		Quit
-#	W 		Write A out.
-#	; 		Ignore rest of line.
-#
+	for s in ["42","0.000000021471","987654321","1.44e-5"]:
+		print(s)
+		f = Float().convertFromString(s).toFloat()
+		print(f.toString())
+		f.times10()
+		print(f.toString())

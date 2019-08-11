@@ -37,6 +37,8 @@ zTemp1:		.word ?							; temporary pointers
 zTemp2:		.word ?
 zTemp3:		.word ?
 
+zLTemp1:	.dword ?						; long word (used in multiply)
+
 ; *******************************************************************************************
 ;
 ;									   Buffers etc.
