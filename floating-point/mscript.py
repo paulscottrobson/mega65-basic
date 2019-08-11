@@ -10,7 +10,7 @@
 # *******************************************************************************************
 
 import re,sys
-from float import *
+from floatx import *
 #
 #		Read and process script (% is line marker)
 #
@@ -22,8 +22,8 @@ script = script.replace("\t","").replace("\r","").replace(" ","").upper()
 #		Process the string
 #
 lineNumber = 1
-floatA = Float().setInteger(0).toFloat()
-floatB = Float().setInteger(0).toFloat()
+floatA = FloatX().setInteger(0).toFloat()
+floatB = FloatX().setInteger(0).toFloat()
 while script != "":
 	cmd = script[0]
 	script = script[1:]
@@ -57,5 +57,5 @@ while script != "":
 		assert floatA.equalFloat(floatB),"Different...."
 	else:
 		assert False,"Unknown "+cmd
-
+print("Script run successfully.")
 

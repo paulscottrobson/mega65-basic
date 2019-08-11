@@ -53,7 +53,11 @@ def strf(n):
 	return "{0:6e}".format(n)
 
 random.seed()
+seed = random.randint(0,999999)
+random.seed(seed)
+print("Generating test using seed {0}".format(seed))
 src = ""
+count = 0
 for i in range(0,4000):
 	op = "+-*/FI"[random.randint(0,3)]					# select operation
 	n1 = create()										# first number
@@ -66,5 +70,7 @@ for i in range(0,4000):
 		src += " L["+strf(calc(op,n1,n2))+"]"			# into B
 		src += " = "									# check result.
 		src = src + "\n"
+		count += 1
+print("Created {0} tests.\n".format(count))
+open("maths.test","w").write(src)
 
-print(src)
