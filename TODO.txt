@@ -1,7 +1,7 @@
 TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
-		+ - * / 
+		* / 
 		= test		
 		string->float, float->string rethink maybe.
 		run 'compiled FP' code.
@@ -14,9 +14,7 @@ Fixes
 - 	Proper insert/delete in line editing.
 - 	Add X to Monitor (warm start BASIC)
 - 	FP optimisations for 4510 extended.
-		Mantissa Copier
-		Normaliser left shift.
-		Float->Integer right shift.
-		Integer negation (used often enough ?)
-		Float<->Integer conversions can use byte copies under certain circumstances.
+		- Anything in FPMacros (check XYZ usage for non shifts - may not be worth it)		
+		- Integer negation in fputils.asm
+		-
 		

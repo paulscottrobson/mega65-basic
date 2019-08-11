@@ -21,7 +21,9 @@
 		;
 		.include 	"interface/interface_tools.asm"
 		.include 	"utility/tim.asm"
+		.include 	"arithmetic/fpmacros.asm"
 		.include 	"arithmetic/fputils.asm"
+		.include 	"arithmetic/fpadd.asm"
 
 StartROM:
 		ldx 		#$FF 					; empty stack
@@ -30,16 +32,23 @@ StartROM:
 
 		jsr 		IFT_ClearScreen
 
-		ldx 		#$0
-		ldy 		#$0
+		ldx 		#31
+		ldy 		#0
 		jsr 		FPUSetBFromXY
-		jsr 		FPUBToFloat
+		ldx 		#B_Mantissa-A_Mantissa
+		jsr 		FPUToFloatX
 		jsr 		FPUCopyBToA		
-		jsr 		FPUAToInteger
+		ldx 		#31
+		ldy 		#0
+		jsr 		FPUSetBFromXY
+		ldx 		#B_Mantissa-A_Mantissa
+		jsr 		FPUToFloatX
+		jsr 		FPSubtract
+		;jsr 		FPUATOInteger
 		.byte 		$5C
 
-ERR_Overflow:
-		bra 		ERR_Overflow
+ERR_Handler:
+		bra 		ERR_Handler
 
 NMIHandler:
 		rti

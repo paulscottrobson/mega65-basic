@@ -9,13 +9,6 @@
 ; *******************************************************************************************
 ; *******************************************************************************************
 
-iszero32 .macro
-		lda 	\1 							; check if B Mantissa zero
-		ora 	\1+1
-		ora 	\1+2
-		ora 	\1+3
-		.endm
-
 ; *******************************************************************************************
 ;
 ;							Sign Extend XY and put in B (Testing)
@@ -59,39 +52,35 @@ _FPUCopy1:
 
 ; *******************************************************************************************
 ;
-;								Convert B Integer to Float
+;								Convert X Integer to Float
 ;
 ; *******************************************************************************************
 
-FPUBToFloat:
+FPUToFloatX:
 		pha
-		lda 	B_Type 						; exit if already float.
+		lda 	A_Type,x					; exit if already float.
 		bmi 	_FPUBExit
 		lda 	#Type_Float 				; set float type
-		sta 	B_Type
+		sta 	A_Type,x
 		lda 	#32 						; and the exponent to 32, makes it * 2^32
-		sta 	B_Exponent
+		sta 	A_Exponent,x
 		;
 		lda 	#0 							; clear sign/zero bytes
-		sta 	B_Sign 					
-		sta		B_Zero
+		sta 	A_Sign,x 					
+		sta		A_Zero,x
 		;
-		lda 	B_Mantissa+3 				; signed integer ?
+		lda 	A_Mantissa+3,x 				; signed integer ?
 		bpl		_FPUBPositive
-		phx
-		ldx 	#B_Mantissa-A_Mantissa
 		jsr 	FPUIntegerNegateX 			; do B = -B in integer, so +ve mantissa
-		plx
-		dec 	B_Sign 						; set the sign byte to $FF
+		dec 	A_Sign,x 					; set the sign byte to $FF
 _FPUBPositive:		
 		;
 		#iszero32 B_Mantissa 				; mantissa is zero ?
 		bne 	_FPUBNonZero
-		dec 	B_Zero 						; set the zero byte to $FF
+		dec 	A_Zero,x 					; set the zero byte to $FF
 _FPUBNonZero:
 		;
-		ldx 	#B_Mantissa-A_Mantissa 		; normalise it.
-		jsr 	FPUNormalise
+		jsr 	FPUNormaliseX
 _FPUBExit:
 		pla
 		rts
@@ -113,7 +102,7 @@ FPUAToInteger:
 		lda 	A_Exponent 					; check -ve exponent or < 32
 		bmi 	_FPUAToIOk
 		cmp 	#32 						; sign exponent >= 32, overflow.
-		bcs 	_FPUATOIOverflow
+		bcs 	FP_Overflow
 _FPUAToIOk:		
 		;
 _FPUAToIToInteger:
@@ -121,10 +110,7 @@ _FPUAToIToInteger:
 		cmp 	#32
 		beq 	_FPUAtoICheckSign 			; check sign needs fixing up.
 		inc 	A_Exponent 					; increment Exponent
-		lsr 	A_Mantissa+3 				; shift mantissa right
-		ror 	A_Mantissa+2
-		ror 	A_Mantissa+1
-		ror 	A_Mantissa+0
+		#lsr32 	A_Mantissa	 				; shift mantissa right
 		bra 	_FPUAToIToInteger 			; keep going.
 		;
 _FPUAtoICheckSign:
@@ -145,8 +131,9 @@ _FPUATOI_Zero:
 _FPUATOI_Exit:
 		pla
 		rts
-_FPUATOIOverflow:
-		jmp 	ERR_Overflow
+FP_Overflow:
+		jsr 	ERR_Handler
+		.text 	"Floating Point overflow",0
 
 ; *******************************************************************************************
 ;
@@ -154,7 +141,7 @@ _FPUATOIOverflow:
 ;
 ; *******************************************************************************************
 
-FPUNormalise:		
+FPUNormaliseX:		
 		pha
 		lda 	A_Zero,x 					; if float-zero, don't need to normalise it.
 		bne 	_FPUNExit
@@ -162,10 +149,7 @@ _FPULoop:
 		lda 	A_Mantissa+3,x 				; bit 31 of mantissa set.
 		bmi 	_FPUNExit 					; if so, we are normalised.
 		;
-		asl 	A_Mantissa+0,x 				; shift mantissa left
-		rol 	A_Mantissa+1,x
-		rol 	A_Mantissa+2,x
-		rol 	A_Mantissa+3,x
+		#asl32x A_Mantissa+0 				; shift mantissa left
 		;
 		dec 	A_Exponent,x 				; decrement exponent
 		lda 	A_Exponent,x 				; if exponent not $7F (e.g. gone < -$80)
