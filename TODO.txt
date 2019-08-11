@@ -1,7 +1,8 @@
 TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
-		= test toint tofrac string->float, float->string rethink maybe.
+		integer fractional
+		= test string->float, float->string rethink maybe move out to seperate python library.
 		run 'compiled FP' code.
 	including macros to support 65816 and/or 4510 opcodes.
 -	Write the expression evaluator

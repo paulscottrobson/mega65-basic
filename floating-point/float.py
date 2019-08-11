@@ -278,6 +278,7 @@ class Float(object):
 		self.value = self.value + (self.value >> 2)
 		self.exponent += 3
 		return self		
+
 	#
 	#		Convert float to string.
 	#
@@ -376,7 +377,7 @@ Float.ISIGN = 0x80000000 									# various constants.
 Float.IMASK = 0xFFFFFFFF
 
 if __name__ == "__main__":
-	for s in ["42","0.000000021471","987654321","1.44e-5"]:
+	for s in ["42","0.000000021471","987654.321","1.44e-5"]:
 		print(s)
 		f = Float().convertFromString(s).toFloat()
 		print(f.toString())
