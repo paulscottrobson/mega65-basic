@@ -25,6 +25,8 @@ for v in range(0,2):
 		assert False
 	if typeID == 0x80:
 		fpv = 0.0
+		if (exponent & 0x80) != 0:
+			exponent = exponent - 0x100
 		if zero == 0:
 			fpv = pow(2,exponent) * mantissa / 0x100000000 * (-1 if sign != 0 else 1)
 		print("\tFloat {0}".format(fpv))

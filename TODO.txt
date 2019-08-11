@@ -1,7 +1,6 @@
 TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
-		/ 
 		= test toint tofrac string->float, float->string rethink maybe.
 		run 'compiled FP' code.
 	including macros to support 65816 and/or 4510 opcodes.
@@ -15,5 +14,5 @@ Fixes
 - 	FP optimisations for 4510 extended.
 		- Anything in FPMacros (check XYZ usage for non shifts - may not be worth it)		
 		- Integer negation in fputils.asm
-		-
+		- Mantissa subtraction in fpdivide.asm
 		

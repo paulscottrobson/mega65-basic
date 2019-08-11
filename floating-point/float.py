@@ -239,7 +239,7 @@ class Float(object):
 				self.value = self.value-fp.value 			# do the subtraction
 				result |= Float.ISIGN 						# set the result bit.
 			fp.value = fp.value >> 1
-															# straight 32 bit rotate.
+															# straight 32 bit rotate left.
 			result = ((result << 1) | (result >> 31)) & Float.IMASK
 
 		self.value = result 	 							# get result
