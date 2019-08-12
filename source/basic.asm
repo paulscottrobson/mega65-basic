@@ -27,6 +27,7 @@
 		.include 	"arithmetic/fpmultiply.asm"
 		.include 	"arithmetic/fpdivide.asm"
 		.include 	"arithmetic/fpparts.asm"
+		.include 	"arithmetic/fpfromstr.asm"
 
 StartROM:
 		ldx 		#$FF 					; empty stack
@@ -34,23 +35,23 @@ StartROM:
 		jsr 		IF_Reset 				; reset external interface
 		jsr 		IFT_ClearScreen
 
-		ldx 		#211
+		ldx 		#22
 		ldy 		#0
 		jsr 		FPUSetBFromXY
-		ldx 		#B_Mantissa-A_Mantissa
+		jsr 		FPUCopyBToA
+		ldx 		#0
 		jsr 		FPUToFloatX
-		jsr 		FPUCopyBToA		
-		ldx 		#100
-		ldy 		#0
-		jsr 		FPUSetBFromXY
-		ldx 		#B_Mantissa-A_Mantissa
-		jsr 		FPUToFloatX
-		jsr 		FPDivide
-		jsr 		FPUCopyAToB
-		inc 		B_Mantissa+0
-		jsr 		FPCompare
-		nop
+
+		lda 		#toConvert & $FF 		
+		sta 		zGenPtr
+		lda 		#toConvert >> 8
+		sta 		zGenPtr+1
+		jsr 		FPAsciiToFloat 			; convert it.
+		jmp 		TIM_Start
 		.byte 		$5C
+
+toConvert:
+		.text 		"-.98732e-23",0
 
 ERR_Handler:
 		bra 		ERR_Handler

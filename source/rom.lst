@@ -1,14 +1,14 @@
 
 ; 64tass Turbo Assembler Macro V1.54.1900 listing file
-; 64tass -q -c -D CPU=6502 -D INTERFACE=1 -b -L rom.lst -o rom.bin basic.asm
-; Mon Aug 12 09:25:23 2019
+; 64tass -q --m4510 -D CPU=4510 -D INTERFACE=2 -b -L rom.lst -o rom.bin basic.asm
+; Mon Aug 12 17:43:59 2019
 
 ;Offset	;Hex		;Monitor	;Source
 
 ;******  Command line definitions
 
-=6502					CPU=6502
-=1					INTERFACE=1
+=4510					CPU=4510
+=2					INTERFACE=2
 
 ;******  Processing input file: basic.asm
 
@@ -33,6 +33,7 @@
 >0022					zTemp2:		.word ?
 >0024					zTemp3:		.word ?
 >0026					zLTemp1:	.dword ?						; long word (used in multiply)
+>002a					zGenPtr:	.word ? 						; general pointer.
 >0300					Tim_PC:		.word ?							; program counter on BRK (Hi/Lo order)
 >0302					Tim_IRQ:	.word ?							; IRQ Vector (Hi/Lo order)
 >0304					Tim_SR:		.byte ? 						; Processor Status
@@ -45,70 +46,355 @@
 ;******  Return to file: basic.asm
 
 
-;******  Processing file: interface/interface_emu.asm
+;******  Processing file: interface/interface_mega65.asm
 
 =80					IF_Width 	= 80 							; characters across
 =25					IF_Height 	= 25 							; characters down.
-=4					IF_Pos 		= 4 							; current position, start of line.
+=4					IF_Pos 		= 4 							; current position, start of line
 =6					IF_XPos 	= 6 							; current position, horizontal.
-=$b000					IF_Screen = $B000							; 2k screen RAM here
-=$b800					IF_PKeyboard = $B800						; Keyboard port.
-=$b801					IF_PBreak = $B801 							; Break key.
-.a000					IF_Reset:
-.a000	60		rts				rts
-.a001					IF_Home:
-.a001	48		pha				pha
-.a002	a9 00		lda #$00			lda 	#0	 						; zero X position
-.a004	85 06		sta $06				sta 	IF_XPos
-.a006	a9 00		lda #$00			lda 	#IF_Screen & $FF 			; set r/w pos.
-.a008	85 04		sta $04				sta 	IF_Pos
-.a00a	a9 b0		lda #$b0			lda 	#IF_Screen >> 8
-.a00c	85 05		sta $05				sta 	IF_Pos+1
-.a00e	68		pla				pla
-.a00f	60		rts				rts
-.a010					IF_NewLine:
-.a010	48		pha				pha
-.a011	a9 00		lda #$00			lda 	#0 							; back to start of line
-.a013	85 06		sta $06				sta 	IF_XPos
-.a015	18		clc				clc 								; down one line
-.a016	a5 04		lda $04				lda 	IF_Pos
-.a018	69 50		adc #$50			adc 	#80
-.a01a	85 04		sta $04				sta 	IF_Pos
-.a01c	90 02		bcc $a020			bcc 	_IF_NoCarry 				; carry through.
-.a01e	e6 05		inc $05				inc 	IF_Pos+1
-.a020					_IF_NoCarry:
-.a020	68		pla				pla
-.a021	60		rts				rts
-.a022					IF_Read:
-.a022	5a		phy				phy 								; save current Y
-.a023	a4 06		ldy $06				ldy 	IF_XPos 					; read character at current position
-.a025	b1 04		lda ($04),y			lda 	(IF_Pos),y
-.a027	e6 06		inc $06				inc 	IF_XPos 					; step right.
-.a029	7a		ply				ply									; restore Y
-.a02a	60		rts				rts
-.a02b					IF_Write:
-.a02b	5a		phy				phy 								; save current Y
-.a02c	a4 06		ldy $06				ldy 	IF_XPos 					; write character at current position
-.a02e	91 04		sta ($04),y			sta 	(IF_Pos),y
-.a030	e6 06		inc $06				inc 	IF_XPos 					; step right.
-.a032	7a		ply				ply									; restore Y
-.a033	60		rts				rts
-.a034					IF_LeftOne:
-.a034	c6 06		dec $06				dec 	IF_XPos
-.a036	60		rts				rts
-.a037					IF_CheckBreak:
-.a037	ad 01 b8	lda $b801			lda 	IF_PBreak					; non-zero if Ctrl+C pressed.
-.a03a	60		rts				rts
-.a03b					IF_GetKey:
-.a03b	ad 00 b8	lda $b800			lda 	IF_PKeyboard				; read keyboard
-.a03e	f0 07		beq $a047			beq		_IFGK_NoKey 				; skip if zero,no key pressed
-.a040	48		pha				pha 								; key pressed, clear queue.
-.a041	a9 00		lda #$00			lda 	#0
-.a043	8d 00 b8	sta $b800			sta 	IF_PKeyboard
-.a046	68		pla				pla
-.a047					_IFGK_NoKey:
-.a047	09 00		ora #$00			ora 	#0							; set Z flag appropriately.
-.a049	60		rts				rts
+=8					IF_FarPtr 	= 8 							; far pointer (4 bytes)
+=$1000					IF_Screen = $1000							; 2k screen RAM here
+=$800					IF_CharSet = $800							; 2k character set (0-7F) here
+.a000					IF_Home:
+.a000	48		pha				pha 								; reset cursor position
+.a001	a9 00		lda #$00			lda 	#IF_Screen & $FF
+.a003	85 04		sta $04				sta 	IF_Pos
+.a005	a9 10		lda #$10			lda 	#IF_Screen >> 8
+.a007	85 05		sta $05				sta 	IF_Pos+1
+.a009	a9 00		lda #$00			lda 	#0
+.a00b	85 06		sta $06				sta 	IF_XPos
+.a00d	68		pla				pla
+.a00e	60		rts				rts
+.a00f					IF_NewLine:
+.a00f	48		pha				pha
+.a010	a9 00		lda #$00			lda 	#0 							; back to start of line
+.a012	85 06		sta $06				sta 	IF_XPos
+.a014	18		clc				clc 								; down one line
+.a015	a5 04		lda $04				lda 	IF_Pos
+.a017	69 50		adc #$50			adc 	#80
+.a019	85 04		sta $04				sta 	IF_Pos
+.a01b	90 02		bcc $a01f			bcc 	_IF_NoCarry 				; carry through.
+.a01d	e6 05		inc $05				inc 	IF_Pos+1
+.a01f					_IF_NoCarry:
+.a01f	68		pla				pla
+.a020	60		rts				rts
+.a021					IF_Read:
+.a021	5a		phy				phy 								; save current Y
+.a022	a4 06		ldy $06				ldy 	IF_XPos 					; read character at current position
+.a024	b1 04		lda ($04),y			lda 	(IF_Pos),y
+.a026	e6 06		inc $06				inc 	IF_XPos 					; step right.
+.a028	7a		ply				ply									; restore Y
+.a029	60		rts				rts
+.a02a					IF_Write:
+.a02a	5a		phy				phy 								; save current Y
+.a02b	a4 06		ldy $06				ldy 	IF_XPos 					; write character at current position
+.a02d	91 04		sta ($04),y			sta 	(IF_Pos),y
+.a02f	e6 06		inc $06				inc 	IF_XPos 					; step right.
+.a031	7a		ply				ply									; restore Y
+.a032	60		rts				rts
+.a033					IF_LeftOne:
+.a033	c6 06		dec $06				dec 	IF_XPos
+.a035	60		rts				rts
+.a036					IF_CheckBreak:
+.a036	db		phz				phz
+.a037	20 7f a0	jsr $a07f			jsr 	IF_SetupKeyAddress 			; point to keyboard
+.a03a	e6 08		inc $08				inc 	IF_FarPtr 					; point to modifiers.
+.a03c	ea		nop				nop 								; read modifiers.
+.a03d	b2 08		lda ($08),z			lda 	(IF_FarPtr),z
+.a03f	fb		plz				plz 								; restore Z
+.a040	29 05		and #$05			and 	#5							; break is LeftShift+Ctrl
+.a042	c9 05		cmp #$05			cmp 	#5
+.a044	f0 02		beq $a048			beq 	_IF_CBExit
+.a046	a9 00		lda #$00			lda 	#0
+.a048					_IF_CBExit:
+.a048	c9 00		cmp #$00			cmp 	#0
+.a04a	60		rts				rts
+.a04b					IF_GetKey:
+.a04b	db		phz				phz
+.a04c	20 7f a0	jsr $a07f			jsr 	IF_SetupKeyAddress
+.a04f	ea		nop				nop 								; read keyboard
+.a050	b2 08		lda ($08),z			lda 	(IF_FarPtr),z
+.a052	c9 14		cmp #$14			cmp 	#20
+.a054	d0 02		bne $a058			bne 	_KMNo
+.a056	a9 08		lda #$08			lda 	#"H"-64
+.a058					_KMNo:
+.a058	c9 91		cmp #$91			cmp 	#145
+.a05a	d0 02		bne $a05e			bne 	_KMNo
+.a05c	a9 17		lda #$17			lda 	#"W"-64
+.a05e					_KMNo:
+.a05e	c9 11		cmp #$11			cmp 	#17
+.a060	d0 02		bne $a064			bne 	_KMNo
+.a062	a9 13		lda #$13			lda 	#"S"-64
+.a064					_KMNo:
+.a064	c9 9d		cmp #$9d			cmp 	#157
+.a066	d0 02		bne $a06a			bne 	_KMNo
+.a068	a9 01		lda #$01			lda 	#"A"-64
+.a06a					_KMNo:
+.a06a	c9 1d		cmp #$1d			cmp 	#29
+.a06c	d0 02		bne $a070			bne 	_KMNo
+.a06e	a9 04		lda #$04			lda 	#"D"-64
+.a070					_KMNo:
+.a070	c9 00		cmp #$00			cmp 	#0
+.a072	f0 07		beq $a07b			beq 	_IFGKEmpty
+.a074	48		pha				pha
+.a075	a9 00		lda #$00			lda 	#0
+.a077	ea		nop				nop
+.a078	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a07a	68		pla				pla
+.a07b					_IFGKEmpty:
+.a07b	fb		plz				plz
+.a07c	c9 00		cmp #$00			cmp 	#0 							; set Z
+.a07e	60		rts				rts
+.a07f					IF_SetupKeyAddress:
+.a07f	a9 0f		lda #$0f			lda 	#$0F 						; set up to write to read keyboard.
+.a081	85 0b		sta $0b				sta 	IF_FarPtr+3
+.a083	a9 fd		lda #$fd			lda 	#$FD
+.a085	85 0a		sta $0a				sta 	IF_FarPtr+2
+.a087	a9 36		lda #$36			lda 	#$36
+.a089	85 09		sta $09				sta 	IF_FarPtr+1
+.a08b	a9 10		lda #$10			lda 	#$10
+.a08d	85 08		sta $08				sta 	IF_FarPtr+0
+.a08f	a3 00		ldz #$00			ldz 	#0
+.a091	60		rts				rts
+.a092					IF_Reset:
+.a092	48		pha				pha 								; save registers
+.a093	da		phx				phx
+.a094	5a		phy				phy
+.a095	a9 0f		lda #$0f			lda 	#$0F 						; set up to write to video system.
+.a097	85 0b		sta $0b				sta 	IF_FarPtr+3
+.a099	a9 fd		lda #$fd			lda 	#$FD
+.a09b	85 0a		sta $0a				sta 	IF_FarPtr+2
+.a09d	a9 30		lda #$30			lda 	#$30
+.a09f	85 09		sta $09				sta 	IF_FarPtr+1
+.a0a1	a9 00		lda #$00			lda 	#$00
+.a0a3	85 08		sta $08				sta 	IF_FarPtr+0
+.a0a5	a3 2f		ldz #$2f			ldz 	#$2F 						; address already set up
+.a0a7	a9 47		lda #$47			lda 	#$47
+.a0a9	ea		nop				nop
+.a0aa	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0ac	a3 2f		ldz #$2f			ldz 	#$2F 						; address already set up
+.a0ae	a9 53		lda #$53			lda 	#$53
+.a0b0	ea		nop				nop
+.a0b1	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0b3	a3 30		ldz #$30			ldz 	#$30 						; address already set up
+.a0b5	a9 40		lda #$40			lda 	#$40
+.a0b7	ea		nop				nop
+.a0b8	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0ba	a3 31		ldz #$31			ldz 	#$31 						; address already set up
+.a0bc	a9 c0		lda #$c0			lda 	#$80+$40
+.a0be	ea		nop				nop
+.a0bf	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0c1	a3 20		ldz #$20			ldz 	#$20 						; address already set up
+.a0c3	a9 00		lda #$00			lda 	#0
+.a0c5	ea		nop				nop
+.a0c6	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0c8	a3 21		ldz #$21			ldz 	#$21 						; address already set up
+.a0ca	a9 00		lda #$00			lda 	#0
+.a0cc	ea		nop				nop
+.a0cd	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0cf	a3 54		ldz #$54			ldz 	#$54 						; address already set up
+.a0d1	a9 40		lda #$40			lda 	#$40
+.a0d3	ea		nop				nop
+.a0d4	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0d6	a3 01		ldz #$01			ldz 	#$01 						; address already set up
+.a0d8	a9 ff		lda #$ff			lda 	#$FF
+.a0da	ea		nop				nop
+.a0db	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0dd	a3 00		ldz #$00			ldz 	#$00 						; address already set up
+.a0df	a9 ff		lda #$ff			lda 	#$FF
+.a0e1	ea		nop				nop
+.a0e2	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0e4	a3 16		ldz #$16			ldz 	#$16 						; address already set up
+.a0e6	a9 cc		lda #$cc			lda 	#$CC
+.a0e8	ea		nop				nop
+.a0e9	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0eb	a3 18		ldz #$18			ldz 	#$18 						; address already set up
+.a0ed	a9 42		lda #$42			lda 	#$42
+.a0ef	ea		nop				nop
+.a0f0	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0f2	a3 11		ldz #$11			ldz 	#$11 						; address already set up
+.a0f4	a9 1b		lda #$1b			lda 	#$1B
+.a0f6	ea		nop				nop
+.a0f7	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a0f9	a9 00		lda #$00			lda 	#$00						; colour RAM at $1F800-1FFFF (2kb)
+.a0fb	85 0b		sta $0b				sta 	IF_FarPtr+3
+.a0fd	a9 01		lda #$01			lda 	#$01
+.a0ff	85 0a		sta $0a				sta 	IF_FarPtr+2
+.a101	a9 f8		lda #$f8			lda 	#$F8
+.a103	85 09		sta $09				sta 	IF_FarPtr+1
+.a105	a9 00		lda #$00			lda 	#$00
+.a107	85 08		sta $08				sta 	IF_FarPtr+0
+.a109	a3 00		ldz #$00			ldz 	#0
+.a10b					_EXTClearColorRam:
+.a10b	a9 05		lda #$05			lda 	#5							; fill that with this colour.
+.a10d	ea		nop				nop
+.a10e	92 08		sta ($08),z			sta 	(IF_FarPtr),z
+.a110	3b		dez				dez
+.a111	d0 f8		bne $a10b			bne 	_EXTClearColorRam
+.a113	e6 09		inc $09				inc 	IF_FarPtr+1
+.a115	d0 f4		bne $a10b			bne 	_EXTClearColorRam
+.a117	a2 00		ldx #$00			ldx 	#0 							; copy PET Font into memory.
+.a119					_EXTCopyCBMFont:
+.a119	bd 5a a1	lda $a15a,x			lda 	IF_CBMFont,x 				; +$800 uses the lower case c/set
+.a11c	9d 00 08	sta $0800,x			sta 	IF_CharSet,x
+.a11f	49 ff		eor #$ff			eor 	#$FF
+.a121	9d 00 0c	sta $0c00,x			sta 	IF_CharSet+$400,x
+.a124	bd 5a a2	lda $a25a,x			lda 	IF_CBMFont+$100,x
+.a127	9d 00 09	sta $0900,x			sta 	IF_CharSet+$100,x
+.a12a	49 ff		eor #$ff			eor 	#$FF
+.a12c	9d 00 0d	sta $0d00,x			sta 	IF_CharSet+$500,x
+.a12f	bd 5a a3	lda $a35a,x			lda 	IF_CBMFont+$200,x
+.a132	9d 00 0a	sta $0a00,x			sta 	IF_CharSet+$200,x
+.a135	49 ff		eor #$ff			eor 	#$FF
+.a137	9d 00 0e	sta $0e00,x			sta 	IF_CharSet+$600,x
+.a13a	bd 5a a4	lda $a45a,x			lda 	IF_CBMFont+$300,x
+.a13d	9d 00 0b	sta $0b00,x			sta 	IF_CharSet+$300,x
+.a140	49 ff		eor #$ff			eor 	#$FF
+.a142	9d 00 0f	sta $0f00,x			sta 	IF_CharSet+$700,x
+.a145	ca		dex				dex
+.a146	d0 d1		bne $a119			bne 	_EXTCopyCBMFont
+.a148	a9 3b		lda #$3b			lda 	#$3F-4  					; puts ROM back in the map (the -4)
+.a14a	85 01		sta $01				sta 	$01
+.a14c	a9 00		lda #$00			lda 	#$00						; do not map bytes 0000-7FFF
+.a14e	a2 00		ldx #$00			ldx 	#$00
+.a150	a0 00		ldy #$00			ldy 	#$00 						; 8000-FFFF offset by $2000
+.a152	a3 f2		ldz #$f2			ldz 	#$F2
+.a154	5c		map				map
+.a155	ea		nop				eom
+.a156	7a		ply				ply 								; restore and exit.
+.a157	fa		plx				plx
+.a158	68		pla				pla
+.a159	60		rts				rts
+.a15a					IF_CBMFont:
+>a15a	1c 22 4a 56 4c 20 1e 00				.binary "pet-font.bin"
+>a162	18 24 42 7e 42 42 42 00 7c 22 22 3c 22 22 7c 00
+>a172	1c 22 40 40 40 22 1c 00 78 24 22 22 22 24 78 00
+>a182	7e 40 40 78 40 40 7e 00 7e 40 40 78 40 40 40 00
+>a192	1c 22 40 4e 42 22 1c 00 42 42 42 7e 42 42 42 00
+>a1a2	1c 08 08 08 08 08 1c 00 0e 04 04 04 04 44 38 00
+>a1b2	42 44 48 70 48 44 42 00 40 40 40 40 40 40 7e 00
+>a1c2	42 66 5a 5a 42 42 42 00 42 62 52 4a 46 42 42 00
+>a1d2	18 24 42 42 42 24 18 00 7c 42 42 7c 40 40 40 00
+>a1e2	18 24 42 42 4a 24 1a 00 7c 42 42 7c 48 44 42 00
+>a1f2	3c 42 40 3c 02 42 3c 00 3e 08 08 08 08 08 08 00
+>a202	42 42 42 42 42 42 3c 00 42 42 42 24 24 18 18 00
+>a212	42 42 42 5a 5a 66 42 00 42 42 24 18 24 42 42 00
+>a222	22 22 22 1c 08 08 08 00 7e 02 04 18 20 40 7e 00
+>a232	3c 20 20 20 20 20 3c 00 00 40 20 10 08 04 02 00
+>a242	3c 04 04 04 04 04 3c 00 00 08 1c 2a 08 08 08 08
+>a252	00 00 10 20 7f 20 10 00 00 00 00 00 00 00 00 00
+>a262	08 08 08 08 00 00 08 00 24 24 24 00 00 00 00 00
+>a272	24 24 7e 24 7e 24 24 00 08 1e 28 1c 0a 3c 08 00
+>a282	00 62 64 08 10 26 46 00 30 48 48 30 4a 44 3a 00
+>a292	04 08 10 00 00 00 00 00 04 08 10 10 10 08 04 00
+>a2a2	20 10 08 08 08 10 20 00 08 2a 1c 3e 1c 2a 08 00
+>a2b2	00 08 08 3e 08 08 00 00 00 00 00 00 00 08 08 10
+>a2c2	00 00 00 7e 00 00 00 00 00 00 00 00 00 18 18 00
+>a2d2	00 02 04 08 10 20 40 00 3c 42 46 5a 62 42 3c 00
+>a2e2	08 18 28 08 08 08 3e 00 3c 42 02 0c 30 40 7e 00
+>a2f2	3c 42 02 1c 02 42 3c 00 04 0c 14 24 7e 04 04 00
+>a302	7e 40 78 04 02 44 38 00 1c 20 40 7c 42 42 3c 00
+>a312	7e 42 04 08 10 10 10 00 3c 42 42 3c 42 42 3c 00
+>a322	3c 42 42 3e 02 04 38 00 00 00 08 00 00 08 00 00
+>a332	00 00 08 00 00 08 08 10 0e 18 30 60 30 18 0e 00
+>a342	00 00 7e 00 7e 00 00 00 70 18 0c 06 0c 18 70 00
+>a352	3c 42 02 0c 10 00 10 00 00 00 00 00 ff 00 00 00
+>a362	08 1c 3e 7f 7f 1c 3e 00 10 10 10 10 10 10 10 10
+>a372	00 00 00 ff 00 00 00 00 00 00 ff 00 00 00 00 00
+>a382	00 ff 00 00 00 00 00 00 00 00 00 00 00 ff 00 00
+>a392	20 20 20 20 20 20 20 20 04 04 04 04 04 04 04 04
+>a3a2	00 00 00 00 e0 10 08 08 08 08 08 04 03 00 00 00
+>a3b2	08 08 08 10 e0 00 00 00 80 80 80 80 80 80 80 ff
+>a3c2	80 40 20 10 08 04 02 01 01 02 04 08 10 20 40 80
+>a3d2	ff 80 80 80 80 80 80 80 ff 01 01 01 01 01 01 01
+>a3e2	00 3c 7e 7e 7e 7e 3c 00 00 00 00 00 00 00 ff 00
+>a3f2	36 7f 7f 7f 3e 1c 08 00 40 40 40 40 40 40 40 40
+>a402	00 00 00 00 03 04 08 08 81 42 24 18 18 24 42 81
+>a412	00 3c 42 42 42 42 3c 00 08 1c 2a 77 2a 08 08 00
+>a422	02 02 02 02 02 02 02 02 08 1c 3e 7f 3e 1c 08 00
+>a432	08 08 08 08 ff 08 08 08 a0 50 a0 50 a0 50 a0 50
+>a442	08 08 08 08 08 08 08 08 00 00 01 3e 54 14 14 00
+>a452	ff 7f 3f 1f 0f 07 03 01 00 00 00 00 00 00 00 00
+>a462	f0 f0 f0 f0 f0 f0 f0 f0 00 00 00 00 ff ff ff ff
+>a472	ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff
+>a482	80 80 80 80 80 80 80 80 aa 55 aa 55 aa 55 aa 55
+>a492	01 01 01 01 01 01 01 01 00 00 00 00 aa 55 aa 55
+>a4a2	ff fe fc f8 f0 e0 c0 80 03 03 03 03 03 03 03 03
+>a4b2	08 08 08 08 0f 08 08 08 00 00 00 00 0f 0f 0f 0f
+>a4c2	08 08 08 08 0f 00 00 00 00 00 00 00 f8 08 08 08
+>a4d2	00 00 00 00 00 00 ff ff 00 00 00 00 0f 08 08 08
+>a4e2	08 08 08 08 ff 00 00 00 00 00 00 00 ff 08 08 08
+>a4f2	08 08 08 08 f8 08 08 08 c0 c0 c0 c0 c0 c0 c0 c0
+>a502	e0 e0 e0 e0 e0 e0 e0 e0 07 07 07 07 07 07 07 07
+>a512	ff ff 00 00 00 00 00 00 ff ff ff 00 00 00 00 00
+>a522	00 00 00 00 00 ff ff ff 01 01 01 01 01 01 01 ff
+>a532	00 00 00 00 f0 f0 f0 f0 0f 0f 0f 0f 00 00 00 00
+>a542	08 08 08 08 f8 00 00 00 f0 f0 f0 f0 00 00 00 00
+>a552	f0 f0 f0 f0 0f 0f 0f 0f 1c 22 4a 56 4c 20 1e 00
+>a562	18 24 42 7e 42 42 42 00 7c 22 22 3c 22 22 7c 00
+>a572	1c 22 40 40 40 22 1c 00 78 24 22 22 22 24 78 00
+>a582	7e 40 40 78 40 40 7e 00 7e 40 40 78 40 40 40 00
+>a592	1c 22 40 4e 42 22 1c 00 42 42 42 7e 42 42 42 00
+>a5a2	1c 08 08 08 08 08 1c 00 0e 04 04 04 04 44 38 00
+>a5b2	42 44 48 70 48 44 42 00 40 40 40 40 40 40 7e 00
+>a5c2	42 66 5a 5a 42 42 42 00 42 62 52 4a 46 42 42 00
+>a5d2	18 24 42 42 42 24 18 00 7c 42 42 7c 40 40 40 00
+>a5e2	18 24 42 42 4a 24 1a 00 7c 42 42 7c 48 44 42 00
+>a5f2	3c 42 40 3c 02 42 3c 00 3e 08 08 08 08 08 08 00
+>a602	42 42 42 42 42 42 3c 00 42 42 42 24 24 18 18 00
+>a612	42 42 42 5a 5a 66 42 00 42 42 24 18 24 42 42 00
+>a622	22 22 22 1c 08 08 08 00 7e 02 04 18 20 40 7e 00
+>a632	3c 20 20 20 20 20 3c 00 00 40 20 10 08 04 02 00
+>a642	3c 04 04 04 04 04 3c 00 00 08 1c 2a 08 08 08 08
+>a652	00 00 10 20 7f 20 10 00 00 00 00 00 00 00 00 00
+>a662	08 08 08 08 00 00 08 00 24 24 24 00 00 00 00 00
+>a672	24 24 7e 24 7e 24 24 00 08 1e 28 1c 0a 3c 08 00
+>a682	00 62 64 08 10 26 46 00 30 48 48 30 4a 44 3a 00
+>a692	04 08 10 00 00 00 00 00 04 08 10 10 10 08 04 00
+>a6a2	20 10 08 08 08 10 20 00 08 2a 1c 3e 1c 2a 08 00
+>a6b2	00 08 08 3e 08 08 00 00 00 00 00 00 00 08 08 10
+>a6c2	00 00 00 7e 00 00 00 00 00 00 00 00 00 18 18 00
+>a6d2	00 02 04 08 10 20 40 00 3c 42 46 5a 62 42 3c 00
+>a6e2	08 18 28 08 08 08 3e 00 3c 42 02 0c 30 40 7e 00
+>a6f2	3c 42 02 1c 02 42 3c 00 04 0c 14 24 7e 04 04 00
+>a702	7e 40 78 04 02 44 38 00 1c 20 40 7c 42 42 3c 00
+>a712	7e 42 04 08 10 10 10 00 3c 42 42 3c 42 42 3c 00
+>a722	3c 42 42 3e 02 04 38 00 00 00 08 00 00 08 00 00
+>a732	00 00 08 00 00 08 08 10 0e 18 30 60 30 18 0e 00
+>a742	00 00 7e 00 7e 00 00 00 70 18 0c 06 0c 18 70 00
+>a752	3c 42 02 0c 10 00 10 00 00 00 00 00 ff 00 00 00
+>a762	00 00 38 04 3c 44 3a 00 40 40 5c 62 42 62 5c 00
+>a772	00 00 3c 42 40 42 3c 00 02 02 3a 46 42 46 3a 00
+>a782	00 00 3c 42 7e 40 3c 00 0c 12 10 7c 10 10 10 00
+>a792	00 00 3a 46 46 3a 02 3c 40 40 5c 62 42 42 42 00
+>a7a2	08 00 18 08 08 08 1c 00 04 00 0c 04 04 04 44 38
+>a7b2	40 40 44 48 50 68 44 00 18 08 08 08 08 08 1c 00
+>a7c2	00 00 76 49 49 49 49 00 00 00 5c 62 42 42 42 00
+>a7d2	00 00 3c 42 42 42 3c 00 00 00 5c 62 62 5c 40 40
+>a7e2	00 00 3a 46 46 3a 02 02 00 00 5c 62 40 40 40 00
+>a7f2	00 00 3e 40 3c 02 7c 00 10 10 7c 10 10 12 0c 00
+>a802	00 00 42 42 42 46 3a 00 00 00 42 42 42 24 18 00
+>a812	00 00 41 49 49 49 36 00 00 00 42 24 18 24 42 00
+>a822	00 00 42 42 46 3a 02 3c 00 00 7e 04 18 20 7e 00
+>a832	08 08 08 08 ff 08 08 08 a0 50 a0 50 a0 50 a0 50
+>a842	08 08 08 08 08 08 08 08 cc cc 33 33 cc cc 33 33
+>a852	cc 66 33 99 cc 66 33 99 00 00 00 00 00 00 00 00
+>a862	f0 f0 f0 f0 f0 f0 f0 f0 00 00 00 00 ff ff ff ff
+>a872	ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff
+>a882	80 80 80 80 80 80 80 80 aa 55 aa 55 aa 55 aa 55
+>a892	01 01 01 01 01 01 01 01 00 00 00 00 aa 55 aa 55
+>a8a2	99 33 66 cc 99 33 66 cc 03 03 03 03 03 03 03 03
+>a8b2	08 08 08 08 0f 08 08 08 00 00 00 00 0f 0f 0f 0f
+>a8c2	08 08 08 08 0f 00 00 00 00 00 00 00 f8 08 08 08
+>a8d2	00 00 00 00 00 00 ff ff 00 00 00 00 0f 08 08 08
+>a8e2	08 08 08 08 ff 00 00 00 00 00 00 00 ff 08 08 08
+>a8f2	08 08 08 08 f8 08 08 08 c0 c0 c0 c0 c0 c0 c0 c0
+>a902	e0 e0 e0 e0 e0 e0 e0 e0 07 07 07 07 07 07 07 07
+>a912	ff ff 00 00 00 00 00 00 ff ff ff 00 00 00 00 00
+>a922	00 00 00 00 00 ff ff ff 01 02 44 48 50 60 40 00
+>a932	00 00 00 00 f0 f0 f0 f0 0f 0f 0f 0f 00 00 00 00
+>a942	08 08 08 08 f8 00 00 00 f0 f0 f0 f0 00 00 00 00
+>a952	f0 f0 f0 f0 0f 0f 0f 0f
 
 ;******  Return to file: basic.asm
 
@@ -119,512 +405,514 @@
 =$201					IFT_YCursor = $201
 =$202					IFT_Buffer = $202 								; scroll copy buffer.
 =$280					IFT_LineBuffer = $280 							; line input buffer.
-.a04a					IFT_ClearScreen:
-.a04a	48		pha				pha
-.a04b	da		phx				phx
-.a04c	5a		phy				phy
-.a04d	20 01 a0	jsr $a001			jsr 	IF_Home 					; home cursor
-.a050	a2 19		ldx #$19			ldx 	#IF_Height 					; this many lines.
-.a052					_IFT_CS0:
-.a052	a0 50		ldy #$50			ldy 	#IF_Width 					; this many chars/line
-.a054					_IFT_CS1:
-.a054	a9 20		lda #$20			lda 	#' '						; clear line.
-.a056	20 2b a0	jsr $a02b			jsr 	IF_Write
-.a059	88		dey				dey
-.a05a	d0 f8		bne $a054			bne 	_IFT_CS1
-.a05c	20 10 a0	jsr $a010			jsr 	IF_NewLine 					; next line down
-.a05f	ca		dex				dex
-.a060	d0 f0		bne $a052			bne 	_IFT_CS0
-.a062	7a		ply				ply
-.a063	fa		plx				plx
-.a064	68		pla				pla
-.a065					IFT_HomeCursor:
-.a065	48		pha				pha
-.a066	20 01 a0	jsr $a001			jsr 	IF_Home
-.a069	a9 00		lda #$00			lda 	#0
-.a06b	8d 00 02	sta $0200			sta 	IFT_XCursor
-.a06e	8d 01 02	sta $0201			sta 	IFT_YCursor
-.a071	68		pla				pla
-.a072	60		rts				rts
-.a073					IFT_PrintCharacter:
-.a073	c9 0d		cmp #$0d			cmp 	#13 						; handle newline.
-.a075	f0 18		beq $a08f			beq 	IFT_NewLine
-.a077	48		pha				pha
-.a078	20 a7 a0	jsr $a0a7			jsr 	IFT_UpperCase 				; make upper case
-.a07b	29 3f		and #$3f			and 	#63 						; make 6 bit PETSCII
-.a07d	20 2b a0	jsr $a02b			jsr 	IF_Write 					; write out.
-.a080	ee 00 02	inc $0200			inc 	IFT_XCursor 				; bump x cursor
-.a083	ad 00 02	lda $0200			lda 	IFT_XCursor 				; reached RHS ?
-.a086	c9 50		cmp #$50			cmp 	#IF_Width
-.a088	d0 03		bne $a08d			bne 	_IFT_PCNotEOL
-.a08a	20 8f a0	jsr $a08f			jsr 	IFT_NewLine 				; if so do new line.
-.a08d					_IFT_PCNotEOL:
-.a08d	68		pla				pla
-.a08e	60		rts				rts
-.a08f					IFT_NewLine:
-.a08f	48		pha				pha
-.a090	20 10 a0	jsr $a010			jsr 	IF_NewLine 					; new line on actual screen.
-.a093	a9 00		lda #$00			lda 	#0 							; reset x position
-.a095	8d 00 02	sta $0200			sta 	IFT_XCursor
-.a098	ee 01 02	inc $0201			inc 	IFT_YCursor 				; move down.
-.a09b	ad 01 02	lda $0201			lda 	IFT_YCursor
-.a09e	c9 19		cmp #$19			cmp 	#IF_Height 					; reached bottom.
-.a0a0	d0 03		bne $a0a5			bne 	_IFT_NL_NotEOS
-.a0a2	20 b2 a0	jsr $a0b2			jsr 	IFT_Scroll 					; scroll screen up.
-.a0a5					_IFT_NL_NotEOS:
-.a0a5	68		pla				pla
-.a0a6	60		rts				rts
-.a0a7					IFT_UpperCase:
-.a0a7	c9 61		cmp #$61			cmp 	#"a"
-.a0a9	90 06		bcc $a0b1			bcc 	_IFT_UCExit
-.a0ab	c9 7b		cmp #$7b			cmp 	#"z"+1
-.a0ad	b0 02		bcs $a0b1			bcs 	_IFT_UCExit
-.a0af	49 20		eor #$20			eor 	#$20
-.a0b1					_IFT_UCExit:
-.a0b1	60		rts				rts
-.a0b2					IFT_Scroll:
-.a0b2	48		pha				pha 								; save AXY
-.a0b3	da		phx				phx
-.a0b4	5a		phy				phy
-.a0b5	a2 00		ldx #$00			ldx 	#0 							; start scrolling.
-.a0b7					_IFT_SLoop:
-.a0b7	20 d7 a0	jsr $a0d7			jsr 	_IFT_ScrollLine 			; scroll line X+1 => X
-.a0ba	e8		inx				inx
-.a0bb	e0 18		cpx #$18			cpx 	#IF_Height-1				; do whole screen
-.a0bd	d0 f8		bne $a0b7			bne 	_IFT_SLoop
-.a0bf	a9 18		lda #$18			lda 	#IF_Height-1 				; move to X = 0,Y = A
-.a0c1	20 fe a0	jsr $a0fe			jsr 	IF_SetYPos
-.a0c4	a2 50		ldx #$50			ldx 	#IF_Width 					; blank line
-.a0c6					_IFT_SBlank:
-.a0c6	a9 20		lda #$20			lda 	#32
-.a0c8	20 2b a0	jsr $a02b			jsr 	IF_Write
-.a0cb	ca		dex				dex
-.a0cc	d0 f8		bne $a0c6			bne 	_IFT_SBlank
-.a0ce	a9 18		lda #$18			lda 	#IF_Height-1 				; move to X = 0,Y = A
-.a0d0	20 fe a0	jsr $a0fe			jsr 	IF_SetYPos
-.a0d3	7a		ply				ply
-.a0d4	fa		plx				plx
-.a0d5	68		pla				pla
-.a0d6	60		rts				rts
-.a0d7					_IFT_ScrollLine:
-.a0d7	da		phx				phx
-.a0d8	da		phx				phx
-.a0d9	8a		txa				txa 								; copy line into buffer.
-.a0da	1a		inc a				inc 	a 							; next line down.
-.a0db	20 fe a0	jsr $a0fe			jsr 	IF_SetYPos
-.a0de	a2 00		ldx #$00			ldx 	#0
-.a0e0					_IFTScrollCopy1:
-.a0e0	20 22 a0	jsr $a022			jsr 	IF_Read
-.a0e3	9d 02 02	sta $0202,x			sta 	IFT_Buffer,x
-.a0e6	e8		inx				inx
-.a0e7	e0 50		cpx #$50			cpx 	#IF_Width
-.a0e9	d0 f5		bne $a0e0			bne 	_IFTScrollCopy1
-.a0eb	68		pla				pla
-.a0ec	20 fe a0	jsr $a0fe			jsr 	IF_SetYPos
-.a0ef	a2 00		ldx #$00			ldx 	#0
-.a0f1					_IFTScrollCopy2:
-.a0f1	bd 02 02	lda $0202,x			lda 	IFT_Buffer,x
-.a0f4	20 2b a0	jsr $a02b			jsr 	IF_Write
-.a0f7	e8		inx				inx
-.a0f8	e0 50		cpx #$50			cpx 	#IF_Width
-.a0fa	d0 f5		bne $a0f1			bne 	_IFTScrollCopy2
-.a0fc	fa		plx				plx
-.a0fd	60		rts				rts
-.a0fe					IF_SetYPos:
-.a0fe	48		pha				pha
-.a0ff	da		phx				phx
-.a100	aa		tax				tax
-.a101	20 65 a0	jsr $a065			jsr 	IFT_HomeCursor
-.a104	e0 00		cpx #$00			cpx 	#0
-.a106	f0 09		beq $a111			beq 	_IFT_MOAExit
-.a108					_IFT_MOALoop:
-.a108	20 10 a0	jsr $a010			jsr 	IF_NewLine
-.a10b	ee 01 02	inc $0201			inc 	IFT_YCursor
-.a10e	ca		dex				dex
-.a10f	d0 f7		bne $a108			bne		_IFT_MOALoop
-.a111					_IFT_MOAExit:
-.a111	fa		plx				plx
-.a112	68		pla				pla
-.a113	60		rts				rts
-.a114					IFT_GetKeyCursor:
-.a114	20 1c a1	jsr $a11c			jsr 	_IFT_FlipCursor 			; reverse current
-.a117					_IFT_GKCWait:
-.a117	20 3b a0	jsr $a03b			jsr 	IF_GetKey 					; get key
-.a11a	f0 fb		beq $a117			beq 	_IFT_GKCWait
-.a11c					_IFT_FlipCursor:
-.a11c	48		pha				pha 								; save
-.a11d	20 22 a0	jsr $a022			jsr 	IF_Read 					; read
-.a120	20 34 a0	jsr $a034			jsr 	IF_LeftOne
-.a123	49 80		eor #$80			eor 	#$80 						; reverse
-.a125	20 2b a0	jsr $a02b			jsr 	IF_Write 					; write
-.a128	20 34 a0	jsr $a034			jsr 	IF_LeftOne
-.a12b	68		pla				pla
-.a12c	60		rts				rts
-.a12d					IFT_ReadLine:
-.a12d	48		pha				pha
-.a12e					_IFT_RLLoop:
-.a12e	20 14 a1	jsr $a114			jsr 	IFT_GetKeyCursor 			; get keystroke
-.a131	c9 0d		cmp #$0d			cmp 	#13							; return
-.a133	f0 7d		beq $a1b2			beq 	_IFT_RLExit
-.a135	c9 20		cmp #$20			cmp 	#32 						; control character
-.a137	90 05		bcc $a13e			bcc 	_IFT_Control
-.a139	20 73 a0	jsr $a073			jsr 	IFT_PrintCharacter
-.a13c	80 f0		bra $a12e			bra 	_IFT_RLLoop
-.a13e					_IFT_Control:
-.a13e	c9 01		cmp #$01			cmp 	#"A"-64
-.a140	f0 26		beq $a168			beq 	_IFT_Left
-.a142	c9 04		cmp #$04			cmp 	#"D"-64
-.a144	f0 2e		beq $a174			beq 	_IFT_Right
-.a146	c9 17		cmp #$17			cmp 	#"W"-64
-.a148	f0 36		beq $a180			beq 	_IFT_Up
-.a14a	c9 13		cmp #$13			cmp 	#"S"-64
-.a14c	f0 3e		beq $a18c			beq 	_IFT_Down
-.a14e	c9 08		cmp #$08			cmp 	#"H"-64
-.a150	f0 09		beq $a15b			beq 	_IFT_Backspace
-.a152	c9 1a		cmp #$1a			cmp 	#"Z"-64
-.a154	d0 d8		bne $a12e			bne 	_IFT_RLLoop
-.a156	20 4a a0	jsr $a04a			jsr 	IFT_ClearScreen				; clear CTL-Z
-.a159	80 d3		bra $a12e			bra 	_IFT_RLLoop
-.a15b					_IFT_Backspace:
-.a15b	ad 00 02	lda $0200			lda 	IFT_XCursor 				; check not start of line.
-.a15e	f0 ce		beq $a12e			beq 	_IFT_RLLoop
-.a160	20 34 a0	jsr $a034			jsr 	IF_LeftOne
-.a163	a9 20		lda #$20			lda 	#" "						; overwrite with space, drop through to left
-.a165	20 2b a0	jsr $a02b			jsr 	IF_Write
-.a168					_IFT_Left:
-.a168	ce 00 02	dec $0200			dec 	IFT_XCursor 				; left CTL-W
-.a16b	10 29		bpl $a196			bpl 	_IFT_Reposition
-.a16d	a9 4f		lda #$4f			lda 	#IF_Width-1
-.a16f					_IFT_SetX:
-.a16f	8d 00 02	sta $0200			sta 	IFT_XCursor
-.a172	80 22		bra $a196			bra 	_IFT_Reposition
-.a174					_IFT_Right:
-.a174	ee 00 02	inc $0200			inc 	IFT_XCursor
-.a177	ad 00 02	lda $0200			lda 	IFT_XCursor
-.a17a	49 50		eor #$50			eor 	#IF_Width
-.a17c	f0 f1		beq $a16f			beq 	_IFT_SetX
-.a17e	80 16		bra $a196			bra 	_IFT_Reposition
-.a180					_IFT_Up:
-.a180	ce 01 02	dec $0201			dec 	IFT_YCursor
-.a183	10 11		bpl $a196			bpl 	_IFT_Reposition
-.a185	a9 18		lda #$18			lda 	#IF_Height-1
-.a187					_IFT_SetY:
-.a187	8d 01 02	sta $0201			sta 	IFT_YCursor
-.a18a	80 0a		bra $a196			bra 	_IFT_Reposition
-.a18c					_IFT_Down:
-.a18c	ee 01 02	inc $0201			inc 	IFT_YCursor
-.a18f	ad 01 02	lda $0201			lda 	IFT_YCursor
-.a192	49 19		eor #$19			eor 	#IF_Height
-.a194	f0 f1		beq $a187			beq 	_IFT_SetY
-.a196					_IFT_Reposition:
-.a196	ad 00 02	lda $0200			lda 	IFT_XCursor 				; put cursor at xCursor,yCursor
-.a199	48		pha				pha
-.a19a	ad 01 02	lda $0201			lda 	IFT_YCursor
-.a19d	20 fe a0	jsr $a0fe			jsr 	IF_SetYPos
-.a1a0	68		pla				pla
-.a1a1	aa		tax				tax
-.a1a2	e0 00		cpx #$00			cpx 	#0
-.a1a4	f0 88		beq $a12e			beq 	_IFT_RLLoop
-.a1a6					_IFT_MoveRight:
-.a1a6	20 22 a0	jsr $a022			jsr 	IF_Read
-.a1a9	ee 00 02	inc $0200			inc 	IFT_XCursor
-.a1ac	ca		dex				dex
-.a1ad	d0 f7		bne $a1a6			bne 	_IFT_MoveRight
-.a1af	4c 2e a1	jmp $a12e			jmp 	_IFT_RLLoop
-.a1b2					_IFT_RLExit:
-.a1b2	ad 01 02	lda $0201			lda 	IFT_YCursor 				; go to start of line.
-.a1b5	20 fe a0	jsr $a0fe			jsr 	IF_SetYPos
-.a1b8	a2 00		ldx #$00			ldx 	#0 							; read text into line.
-.a1ba					_IFT_RLRead:
-.a1ba	20 22 a0	jsr $a022			jsr 	IF_Read
-.a1bd	18		clc				clc 								; convert back to ASCII.
-.a1be	49 20		eor #$20			eor 	#$20
-.a1c0	69 20		adc #$20			adc 	#$20
-.a1c2	9d 80 02	sta $0280,x			sta 	IFT_LineBuffer,x
-.a1c5	e8		inx				inx
-.a1c6	e0 50		cpx #$50			cpx 	#IF_Width
-.a1c8	d0 f0		bne $a1ba			bne 	_IFT_RLRead
-.a1ca					_IFT_RL_Trim:
-.a1ca	ca		dex				dex 	 							; previous char
-.a1cb	30 07		bmi $a1d4			bmi 	_IFT_Found 					; gone too far
-.a1cd	bd 80 02	lda $0280,x			lda 	IFT_LineBuffer,x			; go back if space
-.a1d0	c9 20		cmp #$20			cmp 	#" "
-.a1d2	f0 f6		beq $a1ca			beq 	_IFT_RL_Trim
-.a1d4					_IFT_Found:
-.a1d4	e8		inx				inx 								; forward to non-space
-.a1d5	a9 00		lda #$00			lda 	#0							; make it ASCIIZ
-.a1d7	9d 80 02	sta $0280,x			sta 	IFT_LineBuffer,x
-.a1da	68		pla				pla
-.a1db	a2 80		ldx #$80			ldx 	#IFT_LineBuffer & $FF 		; put address in YX
-.a1dd	a0 02		ldy #$02			ldy 	#IFT_LineBuffer >> 8
-.a1df	60		rts				rts
+.a95a					IFT_ClearScreen:
+.a95a	48		pha				pha
+.a95b	da		phx				phx
+.a95c	5a		phy				phy
+.a95d	20 00 a0	jsr $a000			jsr 	IF_Home 					; home cursor
+.a960	a2 19		ldx #$19			ldx 	#IF_Height 					; this many lines.
+.a962					_IFT_CS0:
+.a962	a0 50		ldy #$50			ldy 	#IF_Width 					; this many chars/line
+.a964					_IFT_CS1:
+.a964	a9 20		lda #$20			lda 	#' '						; clear line.
+.a966	20 2a a0	jsr $a02a			jsr 	IF_Write
+.a969	88		dey				dey
+.a96a	d0 f8		bne $a964			bne 	_IFT_CS1
+.a96c	20 0f a0	jsr $a00f			jsr 	IF_NewLine 					; next line down
+.a96f	ca		dex				dex
+.a970	d0 f0		bne $a962			bne 	_IFT_CS0
+.a972	7a		ply				ply
+.a973	fa		plx				plx
+.a974	68		pla				pla
+.a975					IFT_HomeCursor:
+.a975	48		pha				pha
+.a976	20 00 a0	jsr $a000			jsr 	IF_Home
+.a979	a9 00		lda #$00			lda 	#0
+.a97b	8d 00 02	sta $0200			sta 	IFT_XCursor
+.a97e	8d 01 02	sta $0201			sta 	IFT_YCursor
+.a981	68		pla				pla
+.a982	60		rts				rts
+.a983					IFT_PrintCharacter:
+.a983	c9 0d		cmp #$0d			cmp 	#13 						; handle newline.
+.a985	f0 18		beq $a99f			beq 	IFT_NewLine
+.a987	48		pha				pha
+.a988	20 b7 a9	jsr $a9b7			jsr 	IFT_UpperCase 				; make upper case
+.a98b	29 3f		and #$3f			and 	#63 						; make 6 bit PETSCII
+.a98d	20 2a a0	jsr $a02a			jsr 	IF_Write 					; write out.
+.a990	ee 00 02	inc $0200			inc 	IFT_XCursor 				; bump x cursor
+.a993	ad 00 02	lda $0200			lda 	IFT_XCursor 				; reached RHS ?
+.a996	c9 50		cmp #$50			cmp 	#IF_Width
+.a998	d0 03		bne $a99d			bne 	_IFT_PCNotEOL
+.a99a	20 9f a9	jsr $a99f			jsr 	IFT_NewLine 				; if so do new line.
+.a99d					_IFT_PCNotEOL:
+.a99d	68		pla				pla
+.a99e	60		rts				rts
+.a99f					IFT_NewLine:
+.a99f	48		pha				pha
+.a9a0	20 0f a0	jsr $a00f			jsr 	IF_NewLine 					; new line on actual screen.
+.a9a3	a9 00		lda #$00			lda 	#0 							; reset x position
+.a9a5	8d 00 02	sta $0200			sta 	IFT_XCursor
+.a9a8	ee 01 02	inc $0201			inc 	IFT_YCursor 				; move down.
+.a9ab	ad 01 02	lda $0201			lda 	IFT_YCursor
+.a9ae	c9 19		cmp #$19			cmp 	#IF_Height 					; reached bottom.
+.a9b0	d0 03		bne $a9b5			bne 	_IFT_NL_NotEOS
+.a9b2	20 c2 a9	jsr $a9c2			jsr 	IFT_Scroll 					; scroll screen up.
+.a9b5					_IFT_NL_NotEOS:
+.a9b5	68		pla				pla
+.a9b6	60		rts				rts
+.a9b7					IFT_UpperCase:
+.a9b7	c9 61		cmp #$61			cmp 	#"a"
+.a9b9	90 06		bcc $a9c1			bcc 	_IFT_UCExit
+.a9bb	c9 7b		cmp #$7b			cmp 	#"z"+1
+.a9bd	b0 02		bcs $a9c1			bcs 	_IFT_UCExit
+.a9bf	49 20		eor #$20			eor 	#$20
+.a9c1					_IFT_UCExit:
+.a9c1	60		rts				rts
+.a9c2					IFT_Scroll:
+.a9c2	48		pha				pha 								; save AXY
+.a9c3	da		phx				phx
+.a9c4	5a		phy				phy
+.a9c5	a2 00		ldx #$00			ldx 	#0 							; start scrolling.
+.a9c7					_IFT_SLoop:
+.a9c7	20 e7 a9	jsr $a9e7			jsr 	_IFT_ScrollLine 			; scroll line X+1 => X
+.a9ca	e8		inx				inx
+.a9cb	e0 18		cpx #$18			cpx 	#IF_Height-1				; do whole screen
+.a9cd	d0 f8		bne $a9c7			bne 	_IFT_SLoop
+.a9cf	a9 18		lda #$18			lda 	#IF_Height-1 				; move to X = 0,Y = A
+.a9d1	20 0e aa	jsr $aa0e			jsr 	IF_SetYPos
+.a9d4	a2 50		ldx #$50			ldx 	#IF_Width 					; blank line
+.a9d6					_IFT_SBlank:
+.a9d6	a9 20		lda #$20			lda 	#32
+.a9d8	20 2a a0	jsr $a02a			jsr 	IF_Write
+.a9db	ca		dex				dex
+.a9dc	d0 f8		bne $a9d6			bne 	_IFT_SBlank
+.a9de	a9 18		lda #$18			lda 	#IF_Height-1 				; move to X = 0,Y = A
+.a9e0	20 0e aa	jsr $aa0e			jsr 	IF_SetYPos
+.a9e3	7a		ply				ply
+.a9e4	fa		plx				plx
+.a9e5	68		pla				pla
+.a9e6	60		rts				rts
+.a9e7					_IFT_ScrollLine:
+.a9e7	da		phx				phx
+.a9e8	da		phx				phx
+.a9e9	8a		txa				txa 								; copy line into buffer.
+.a9ea	1a		inc a				inc 	a 							; next line down.
+.a9eb	20 0e aa	jsr $aa0e			jsr 	IF_SetYPos
+.a9ee	a2 00		ldx #$00			ldx 	#0
+.a9f0					_IFTScrollCopy1:
+.a9f0	20 21 a0	jsr $a021			jsr 	IF_Read
+.a9f3	9d 02 02	sta $0202,x			sta 	IFT_Buffer,x
+.a9f6	e8		inx				inx
+.a9f7	e0 50		cpx #$50			cpx 	#IF_Width
+.a9f9	d0 f5		bne $a9f0			bne 	_IFTScrollCopy1
+.a9fb	68		pla				pla
+.a9fc	20 0e aa	jsr $aa0e			jsr 	IF_SetYPos
+.a9ff	a2 00		ldx #$00			ldx 	#0
+.aa01					_IFTScrollCopy2:
+.aa01	bd 02 02	lda $0202,x			lda 	IFT_Buffer,x
+.aa04	20 2a a0	jsr $a02a			jsr 	IF_Write
+.aa07	e8		inx				inx
+.aa08	e0 50		cpx #$50			cpx 	#IF_Width
+.aa0a	d0 f5		bne $aa01			bne 	_IFTScrollCopy2
+.aa0c	fa		plx				plx
+.aa0d	60		rts				rts
+.aa0e					IF_SetYPos:
+.aa0e	48		pha				pha
+.aa0f	da		phx				phx
+.aa10	aa		tax				tax
+.aa11	20 75 a9	jsr $a975			jsr 	IFT_HomeCursor
+.aa14	e0 00		cpx #$00			cpx 	#0
+.aa16	f0 09		beq $aa21			beq 	_IFT_MOAExit
+.aa18					_IFT_MOALoop:
+.aa18	20 0f a0	jsr $a00f			jsr 	IF_NewLine
+.aa1b	ee 01 02	inc $0201			inc 	IFT_YCursor
+.aa1e	ca		dex				dex
+.aa1f	d0 f7		bne $aa18			bne		_IFT_MOALoop
+.aa21					_IFT_MOAExit:
+.aa21	fa		plx				plx
+.aa22	68		pla				pla
+.aa23	60		rts				rts
+.aa24					IFT_GetKeyCursor:
+.aa24	20 2c aa	jsr $aa2c			jsr 	_IFT_FlipCursor 			; reverse current
+.aa27					_IFT_GKCWait:
+.aa27	20 4b a0	jsr $a04b			jsr 	IF_GetKey 					; get key
+.aa2a	f0 fb		beq $aa27			beq 	_IFT_GKCWait
+.aa2c					_IFT_FlipCursor:
+.aa2c	48		pha				pha 								; save
+.aa2d	20 21 a0	jsr $a021			jsr 	IF_Read 					; read
+.aa30	20 33 a0	jsr $a033			jsr 	IF_LeftOne
+.aa33	49 80		eor #$80			eor 	#$80 						; reverse
+.aa35	20 2a a0	jsr $a02a			jsr 	IF_Write 					; write
+.aa38	20 33 a0	jsr $a033			jsr 	IF_LeftOne
+.aa3b	68		pla				pla
+.aa3c	60		rts				rts
+.aa3d					IFT_ReadLine:
+.aa3d	48		pha				pha
+.aa3e					_IFT_RLLoop:
+.aa3e	20 24 aa	jsr $aa24			jsr 	IFT_GetKeyCursor 			; get keystroke
+.aa41	c9 0d		cmp #$0d			cmp 	#13							; return
+.aa43	f0 7d		beq $aac2			beq 	_IFT_RLExit
+.aa45	c9 20		cmp #$20			cmp 	#32 						; control character
+.aa47	90 05		bcc $aa4e			bcc 	_IFT_Control
+.aa49	20 83 a9	jsr $a983			jsr 	IFT_PrintCharacter
+.aa4c	80 f0		bra $aa3e			bra 	_IFT_RLLoop
+.aa4e					_IFT_Control:
+.aa4e	c9 01		cmp #$01			cmp 	#"A"-64
+.aa50	f0 26		beq $aa78			beq 	_IFT_Left
+.aa52	c9 04		cmp #$04			cmp 	#"D"-64
+.aa54	f0 2e		beq $aa84			beq 	_IFT_Right
+.aa56	c9 17		cmp #$17			cmp 	#"W"-64
+.aa58	f0 36		beq $aa90			beq 	_IFT_Up
+.aa5a	c9 13		cmp #$13			cmp 	#"S"-64
+.aa5c	f0 3e		beq $aa9c			beq 	_IFT_Down
+.aa5e	c9 08		cmp #$08			cmp 	#"H"-64
+.aa60	f0 09		beq $aa6b			beq 	_IFT_Backspace
+.aa62	c9 1a		cmp #$1a			cmp 	#"Z"-64
+.aa64	d0 d8		bne $aa3e			bne 	_IFT_RLLoop
+.aa66	20 5a a9	jsr $a95a			jsr 	IFT_ClearScreen				; clear CTL-Z
+.aa69	80 d3		bra $aa3e			bra 	_IFT_RLLoop
+.aa6b					_IFT_Backspace:
+.aa6b	ad 00 02	lda $0200			lda 	IFT_XCursor 				; check not start of line.
+.aa6e	f0 ce		beq $aa3e			beq 	_IFT_RLLoop
+.aa70	20 33 a0	jsr $a033			jsr 	IF_LeftOne
+.aa73	a9 20		lda #$20			lda 	#" "						; overwrite with space, drop through to left
+.aa75	20 2a a0	jsr $a02a			jsr 	IF_Write
+.aa78					_IFT_Left:
+.aa78	ce 00 02	dec $0200			dec 	IFT_XCursor 				; left CTL-W
+.aa7b	10 29		bpl $aaa6			bpl 	_IFT_Reposition
+.aa7d	a9 4f		lda #$4f			lda 	#IF_Width-1
+.aa7f					_IFT_SetX:
+.aa7f	8d 00 02	sta $0200			sta 	IFT_XCursor
+.aa82	80 22		bra $aaa6			bra 	_IFT_Reposition
+.aa84					_IFT_Right:
+.aa84	ee 00 02	inc $0200			inc 	IFT_XCursor
+.aa87	ad 00 02	lda $0200			lda 	IFT_XCursor
+.aa8a	49 50		eor #$50			eor 	#IF_Width
+.aa8c	f0 f1		beq $aa7f			beq 	_IFT_SetX
+.aa8e	80 16		bra $aaa6			bra 	_IFT_Reposition
+.aa90					_IFT_Up:
+.aa90	ce 01 02	dec $0201			dec 	IFT_YCursor
+.aa93	10 11		bpl $aaa6			bpl 	_IFT_Reposition
+.aa95	a9 18		lda #$18			lda 	#IF_Height-1
+.aa97					_IFT_SetY:
+.aa97	8d 01 02	sta $0201			sta 	IFT_YCursor
+.aa9a	80 0a		bra $aaa6			bra 	_IFT_Reposition
+.aa9c					_IFT_Down:
+.aa9c	ee 01 02	inc $0201			inc 	IFT_YCursor
+.aa9f	ad 01 02	lda $0201			lda 	IFT_YCursor
+.aaa2	49 19		eor #$19			eor 	#IF_Height
+.aaa4	f0 f1		beq $aa97			beq 	_IFT_SetY
+.aaa6					_IFT_Reposition:
+.aaa6	ad 00 02	lda $0200			lda 	IFT_XCursor 				; put cursor at xCursor,yCursor
+.aaa9	48		pha				pha
+.aaaa	ad 01 02	lda $0201			lda 	IFT_YCursor
+.aaad	20 0e aa	jsr $aa0e			jsr 	IF_SetYPos
+.aab0	68		pla				pla
+.aab1	aa		tax				tax
+.aab2	e0 00		cpx #$00			cpx 	#0
+.aab4	f0 88		beq $aa3e			beq 	_IFT_RLLoop
+.aab6					_IFT_MoveRight:
+.aab6	20 21 a0	jsr $a021			jsr 	IF_Read
+.aab9	ee 00 02	inc $0200			inc 	IFT_XCursor
+.aabc	ca		dex				dex
+.aabd	d0 f7		bne $aab6			bne 	_IFT_MoveRight
+.aabf	4c 3e aa	jmp $aa3e			jmp 	_IFT_RLLoop
+.aac2					_IFT_RLExit:
+.aac2	ad 01 02	lda $0201			lda 	IFT_YCursor 				; go to start of line.
+.aac5	20 0e aa	jsr $aa0e			jsr 	IF_SetYPos
+.aac8	a2 00		ldx #$00			ldx 	#0 							; read text into line.
+.aaca					_IFT_RLRead:
+.aaca	20 21 a0	jsr $a021			jsr 	IF_Read
+.aacd	18		clc				clc 								; convert back to ASCII.
+.aace	49 20		eor #$20			eor 	#$20
+.aad0	69 20		adc #$20			adc 	#$20
+.aad2	9d 80 02	sta $0280,x			sta 	IFT_LineBuffer,x
+.aad5	e8		inx				inx
+.aad6	e0 50		cpx #$50			cpx 	#IF_Width
+.aad8	d0 f0		bne $aaca			bne 	_IFT_RLRead
+.aada					_IFT_RL_Trim:
+.aada	ca		dex				dex 	 							; previous char
+.aadb	30 07		bmi $aae4			bmi 	_IFT_Found 					; gone too far
+.aadd	bd 80 02	lda $0280,x			lda 	IFT_LineBuffer,x			; go back if space
+.aae0	c9 20		cmp #$20			cmp 	#" "
+.aae2	f0 f6		beq $aada			beq 	_IFT_RL_Trim
+.aae4					_IFT_Found:
+.aae4	e8		inx				inx 								; forward to non-space
+.aae5	a9 00		lda #$00			lda 	#0							; make it ASCIIZ
+.aae7	9d 80 02	sta $0280,x			sta 	IFT_LineBuffer,x
+.aaea	68		pla				pla
+.aaeb	a2 80		ldx #$80			ldx 	#IFT_LineBuffer & $FF 		; put address in YX
+.aaed	a0 02		ldy #$02			ldy 	#IFT_LineBuffer >> 8
+.aaef	60		rts				rts
 
 ;******  Return to file: basic.asm
 
 
 ;******  Processing file: utility/tim.asm
 
-.a1e0					TIM_Error:
-.a1e0	a9 3f		lda #$3f			lda 	#"?"						; ? prompt
-.a1e2	80 02		bra $a1e6			bra 	TIM_ShowPrompt
-.a1e4					TIM_NewCommand:
-.a1e4	a9 2e		lda #$2e			lda 	#"."						; dot prompt
-.a1e6					TIM_ShowPrompt:
-.a1e6	20 73 a0	jsr $a073			jsr 	IFT_PrintCharacter
-.a1e9	20 2d a1	jsr $a12d			jsr 	IFT_ReadLine	 			; get character, go to next line
-.a1ec	20 8f a0	jsr $a08f			jsr 	IFT_NewLine
-.a1ef	86 20		stx $20				stx 	zTemp1 						; save line read
-.a1f1	84 21		sty $21				sty 	zTemp1+1
-.a1f3	a0 01		ldy #$01			ldy 	#1 							; get first character
-.a1f5	b1 20		lda ($20),y			lda 	(zTemp1),y
-.a1f7	c9 52		cmp #$52			cmp 	#"R"						; show registers
-.a1f9	f0 6c		beq $a267			beq 	TIM_ShowRegisters
-.a1fb	c9 4d		cmp #$4d			cmp 	#"M" 						; show memory
-.a1fd	f0 12		beq $a211			beq 	TIM_ShowMemory
-.a1ff	c9 47		cmp #$47			cmp 	#"G"						; execute
-.a201	f0 49		beq $a24c			beq 	TIM_Execute
-.a203	c9 3a		cmp #$3a			cmp 	#":"						; load memory
-.a205	f0 07		beq $a20e			beq 	TIM_GoLoadMemory
-.a207	c9 3b		cmp #$3b			cmp 	#";" 						; load registers
-.a209	d0 d5		bne $a1e0			bne 	TIM_Error
-.a20b	4c 88 a3	jmp $a388			jmp 	TIM_UpdateRegisters
-.a20e					TIM_GoLoadMemory:
-.a20e	4c b3 a3	jmp $a3b3			jmp 	TIM_LoadMemory
-.a211					TIM_ShowMemory:
-.a211	20 08 a3	jsr $a308			jsr 	TIM_GetHex 					; get a hex value out => zTemp3
-.a214	b0 ca		bcs $a1e0			bcs 	TIM_Error
-.a216	a5 24		lda $24				lda 	zTemp3 						; copy zTemp3 => zTemp2
-.a218	85 22		sta $22				sta 	zTemp2
-.a21a	a5 25		lda $25				lda 	zTemp3+1
-.a21c	85 23		sta $23				sta 	zTemp2+1
-.a21e	20 08 a3	jsr $a308			jsr 	TIM_GetHex 					; get a hex value out
-.a221	90 08		bcc $a22b			bcc 	_TIMSM_Start 				; okay, display zTemp2 ... zTemp3
-.a223	a5 22		lda $22				lda 	zTemp2 						; set zTemp2 => zTemp3 so just one line.
-.a225	85 24		sta $24				sta 	zTemp3
-.a227	a5 23		lda $23				lda 	zTemp2+1
-.a229	85 25		sta $25				sta 	zTemp3+1
-.a22b					_TIMSM_Start:
-.a22b	20 e0 a2	jsr $a2e0			jsr 	TIM_WriteLine
-.a22e	a5 22		lda $22				lda 	zTemp2 						; bump ZTemp2
-.a230	18		clc				clc
-.a231	69 10		adc #$10			adc 	#16
-.a233	85 22		sta $22				sta 	zTemp2
-.a235	90 02		bcc $a239			bcc 	_TIMSM_NoCarry
-.a237	e6 23		inc $23				inc 	zTemp2+1
-.a239					_TIMSM_NoCarry:
-.a239	20 37 a0	jsr $a037			jsr 	IF_CheckBreak 				; check CTL+C
-.a23c	d0 0b		bne $a249			bne 	_TIMSM_Ends
-.a23e	38		sec				sec 								; check past.
-.a23f	a5 24		lda $24				lda 	zTemp3
-.a241	e5 22		sbc $22				sbc 	zTemp2
-.a243	a5 25		lda $25				lda 	zTemp3+1
-.a245	e5 23		sbc $23				sbc 	zTemp2+1
-.a247	10 e2		bpl $a22b			bpl 	_TIMSM_Start
-.a249					_TIMSM_Ends:
-.a249	4c e4 a1	jmp $a1e4			jmp 	TIM_NewCommand
-.a24c					TIM_Execute:
-.a24c	20 08 a3	jsr $a308			jsr 	TIM_GetHex 					; get the execute address
-.a24f	b0 8f		bcs $a1e0			bcs 	TIM_Error
-.a251	ea		nop				nop
-.a252	ae 09 03	ldx $0309			ldx 	TIM_SP 						; set up S
-.a255	9a		txs				txs
-.a256	ad 04 03	lda $0304			lda 	TIM_SR 						; Status for PLP
-.a259	48		pha				pha
-.a25a	ad 05 03	lda $0305			lda 	TIM_A 						; restore AXYZ
-.a25d	ae 06 03	ldx $0306			ldx 	TIM_X
-.a260	ac 07 03	ldy $0307			ldy 	TIM_Y
-.a263	28		plp				plp 								; and PS Byte.
-.a264	6c 24 00	jmp ($0024)			jmp 	(zTemp3)					; go execute
-.a267					TIM_Start:
-.a267					TIM_ShowRegisters:
-.a267	ad fe ff	lda $fffe			lda 	$FFFE 						; copy IRQx
-.a26a	8d 03 03	sta $0303			sta 	TIM_IRQ+1
-.a26d	ad ff ff	lda $ffff			lda 	$FFFF
-.a270	8d 02 03	sta $0302			sta 	TIM_IRQ
-.a273	a2 00		ldx #$00			ldx 	#0 							; display register prompt
-.a275					_TIMSR_Text:
-.a275	bd a0 a2	lda $a2a0,x			lda 	_TIMSR_Label,x
-.a278	20 73 a0	jsr $a073			jsr 	IFT_PrintCharacter
-.a27b	e8		inx				inx
-.a27c	e0 27		cpx #$27			cpx 	#_TIMSR_LabelEnd-_TIMSR_Label
-.a27e	d0 f5		bne $a275			bne 	_TIMSR_Text
-.a280	a2 00		ldx #$00			ldx 	#0 							; output Register Line.
-.a282					_TIMSR_LoopSpace:
-.a282	e0 04		cpx #$04			cpx 	#4
-.a284	b0 04		bcs $a28a			bcs 	_TIMSR_Space
-.a286	8a		txa				txa
-.a287	4a		lsr a				lsr 	a
-.a288	b0 05		bcs $a28f			bcs 	_TIMSR_NoSpace
-.a28a					_TIMSR_Space:
-.a28a	a9 20		lda #$20			lda 	#" "
-.a28c	20 73 a0	jsr $a073			jsr 	IFT_PrintCharacter
-.a28f					_TIMSR_NoSpace:
-.a28f	bd 00 03	lda $0300,x			lda 	TIM_PC,x 					; output hex value.
-.a292	20 c7 a2	jsr $a2c7			jsr 	TIM_WriteHex
-.a295	e8		inx				inx
-.a296	e0 0a		cpx #$0a			cpx 	#TIM_SP-TIM_PC+1
-.a298	d0 e8		bne $a282			bne 	_TimSR_LoopSpace
-.a29a	20 8f a0	jsr $a08f			jsr 	IFT_NewLine
-.a29d	4c e4 a1	jmp $a1e4			jmp	 	TIM_NewCommand
-.a2a0					_TIMSR_Label:
->a2a0	54 49 4d 36 35 20 50 43				.text 	"TIM65 PC   IRQ  SR AC XR YR ZR SP",13,".;   "
->a2a8	20 20 20 49 52 51 20 20 53 52 20 41 43 20 58 52
->a2b8	20 59 52 20 5a 52 20 53 50 0d 2e 3b 20 20 20
-.a2c7					_TIMSR_LabelEnd:
-.a2c7					TIM_WriteHex:
-.a2c7	48		pha				pha
-.a2c8	4a		lsr a				lsr 	a
-.a2c9	4a		lsr a				lsr 	a
-.a2ca	4a		lsr a				lsr 	a
-.a2cb	4a		lsr a				lsr 	a
-.a2cc	20 d0 a2	jsr $a2d0			jsr 	_TIMWH_Nibble
-.a2cf	68		pla				pla
-.a2d0					_TIMWH_Nibble:
-.a2d0	48		pha				pha
-.a2d1	29 0f		and #$0f			and 	#15
-.a2d3	c9 0a		cmp #$0a			cmp 	#10
-.a2d5	90 02		bcc $a2d9			bcc 	_TIMWHNoLetter
-.a2d7	69 06		adc #$06			adc 	#6
-.a2d9					_TIMWHNoLetter:
-.a2d9	69 30		adc #$30			adc 	#48
-.a2db	20 73 a0	jsr $a073			jsr 	IFT_PrintCharacter
-.a2de	68		pla				pla
-.a2df	60		rts				rts
-.a2e0					TIM_WriteLine:
-.a2e0	a9 2e		lda #$2e			lda 	#"."
-.a2e2	20 73 a0	jsr $a073			jsr 	IFT_PrintCharacter
-.a2e5	a9 3a		lda #$3a			lda 	#":"
-.a2e7	20 73 a0	jsr $a073			jsr 	IFT_PrintCharacter
-.a2ea	a5 23		lda $23				lda 	zTemp2+1
-.a2ec	20 c7 a2	jsr $a2c7			jsr 	TIM_WriteHex
-.a2ef	a5 22		lda $22				lda 	zTemp2
-.a2f1	20 c7 a2	jsr $a2c7			jsr 	TIM_WriteHex
-.a2f4	a0 00		ldy #$00			ldy 	#0
-.a2f6					_TIMWL_Loop:
-.a2f6	a9 20		lda #$20			lda 	#" "
-.a2f8	20 73 a0	jsr $a073			jsr 	IFT_PrintCharacter
-.a2fb	b1 22		lda ($22),y			lda 	(zTemp2),y
-.a2fd	20 c7 a2	jsr $a2c7			jsr 	TIM_WriteHex
-.a300	c8		iny				iny
-.a301	c0 10		cpy #$10			cpy 	#16
-.a303	d0 f1		bne $a2f6			bne 	_TIMWL_Loop
-.a305	4c 8f a0	jmp $a08f			jmp 	IFT_NewLine
-.a308					TIM_GetHex:
-.a308	c8		iny				iny
-.a309	b1 20		lda ($20),y			lda 	(zTemp1),y 					; skip over spaces.
-.a30b	c9 20		cmp #$20			cmp 	#32
-.a30d	f0 f9		beq $a308			beq 	TIM_GetHex
-.a30f	20 38 a3	jsr $a338			jsr 	TIM_GetHexCharacter 		; extract one hex character.
-.a312	b0 23		bcs $a337			bcs 	_TIMGH_Exit					; if first bad then exit now.
-.a314	a9 00		lda #$00			lda 	#0 							; zero result
-.a316	85 24		sta $24				sta 	zTemp3
-.a318	85 25		sta $25				sta 	zTemp3+1
-.a31a					_TIM_GHLoop:
-.a31a	20 38 a3	jsr $a338			jsr 	TIM_GetHexCharacter 		; get next character
-.a31d	b0 17		bcs $a336			bcs 	_TIMGH_Okay 				; if bad, exit as we have one good one.
-.a31f	c8		iny				iny 								; skip over it.
-.a320	06 24		asl $24				asl 	zTemp3 						; x zTemp3 by 16
-.a322	26 25		rol $25				rol 	zTemp3+1
-.a324	06 24		asl $24				asl 	zTemp3 						; now x 2
-.a326	26 25		rol $25				rol 	zTemp3+1
-.a328	06 24		asl $24				asl 	zTemp3						; now x 4
-.a32a	26 25		rol $25				rol 	zTemp3+1
-.a32c	06 24		asl $24				asl 	zTemp3 						; now x 8
-.a32e	26 25		rol $25				rol 	zTemp3+1
-.a330	05 24		ora $24				ora 	zTemp3 						; OR result in
-.a332	85 24		sta $24				sta 	zTemp3
-.a334	80 e4		bra $a31a			bra 	_TIM_GHLoop 				; loop round again.
-.a336					_TIMGH_Okay:
-.a336	18		clc				clc
-.a337					_TIMGH_Exit:
-.a337	60		rts				rts
-.a338					TIM_GetHexCharacter:
-.a338	b1 20		lda ($20),y			lda 	(zTemp1),y
-.a33a	38		sec				sec
-.a33b	e9 30		sbc #$30			sbc 	#"0" 						; < 0 exit with CS
-.a33d	90 0e		bcc $a34d			bcc 	_TIM_GHCFail
-.a33f	c9 0a		cmp #$0a			cmp 	#10 						; 0-9 exit with CC
-.a341	90 0b		bcc $a34e			bcc 	_TIM_GHCExit
-.a343	c9 11		cmp #$11			cmp 	#65-48						; < A
-.a345	90 06		bcc $a34d			bcc		_TIM_GHCFail
-.a347	e9 07		sbc #$07			sbc 	#7 							; adjust for gap from 9-A
-.a349	c9 10		cmp #$10			cmp 	#16 						; result in range okay.
-.a34b	90 01		bcc $a34e			bcc		_TIM_GHCExit
-.a34d					_TIM_GHCFail:
-.a34d	38		sec				sec
-.a34e					_TIM_GHCExit:
-.a34e	60		rts				rts
-.a34f					TIM_BreakVector:
-.a34f	da		phx				phx									; save X/A on stack
-.a350	48		pha				pha
-.a351	ba		tsx				tsx 								; X points to S
-.a352	bd 03 01	lda $0103,x			lda 	$0103,x 					; PSW saved on stack.
-.a355	29 10		and #$10			and 	#$10 						; check stacked B Flag
-.a357	d0 03		bne $a35c			bne 	_TIMBreak					; if set, it's BRK
-.a359	68		pla				pla 								; abandon
-.a35a	fa		plx				plx
-.a35b	40		rti				rti
-.a35c					_TIMBreak:
-.a35c	68		pla				pla
-.a35d	8d 05 03	sta $0305			sta 	TIM_A
-.a360	fa		plx				plx
-.a361	8e 06 03	stx $0306			stx 	TIM_X
-.a364	8c 07 03	sty $0307			sty 	TIM_Y
-.a367	68		pla				pla 								; get P
-.a368	8d 04 03	sta $0304			sta 	TIM_SR
-.a36b	68		pla				pla
-.a36c	8d 01 03	sta $0301			sta 	TIM_PC+1 					; save calling address
-.a36f	68		pla				pla
-.a370	8d 00 03	sta $0300			sta 	TIM_PC 						; high byte
-.a373	ad 01 03	lda $0301			lda 	TIM_PC+1 					; dec PC to point right.
-.a376	d0 03		bne $a37b			bne 	_TIMDecrement
-.a378	ce 00 03	dec $0300			dec 	TIM_PC
-.a37b					_TIMDecrement:
-.a37b	ce 01 03	dec $0301			dec 	TIM_PC+1
-.a37e	ba		tsx				tsx
-.a37f	8e 09 03	stx $0309			stx 	TIM_SP 						; and SP
-.a382	a2 ff		ldx #$ff			ldx 	#$FF 						; reset SP
-.a384	9a		txs				txs
-.a385	4c 67 a2	jmp $a267			jmp 	TIM_Start
-.a388					TIM_UpdateRegisters:
-.a388	20 08 a3	jsr $a308			jsr 	TIM_GetHex 					; PC
-.a38b	b0 23		bcs $a3b0			bcs 	_TIMURFail
-.a38d	a5 24		lda $24				lda 	zTemp3
-.a38f	8d 01 03	sta $0301			sta 	Tim_PC+1
-.a392	a5 25		lda $25				lda 	zTemp3+1
-.a394	8d 00 03	sta $0300			sta 	Tim_PC
-.a397	20 08 a3	jsr $a308			jsr 	TIM_GetHex 					; ignore IRQ
-.a39a	b0 14		bcs $a3b0			bcs 	_TIMURFail
-.a39c	a2 00		ldx #$00			ldx 	#0
-.a39e					_TIM_URLoop:
-.a39e	20 08 a3	jsr $a308			jsr 	TIM_GetHex 					; registers
-.a3a1	b0 0d		bcs $a3b0			bcs 	_TIMURFail
-.a3a3	a5 24		lda $24				lda 	zTemp3
-.a3a5	9d 04 03	sta $0304,x			sta 	Tim_SR,x
-.a3a8	e8		inx				inx
-.a3a9	e0 06		cpx #$06			cpx 	#Tim_SP-Tim_SR+1
-.a3ab	d0 f1		bne $a39e			bne 	_TIM_URLoop
-.a3ad	4c e4 a1	jmp $a1e4			jmp 	TIM_NewCommand
-.a3b0					_TIMURFail:
-.a3b0	4c e0 a1	jmp $a1e0			jmp 	TIM_Error
-.a3b3					TIM_LoadMemory:
-.a3b3	20 08 a3	jsr $a308			jsr 	TIM_GetHex 					; target address => zTemp2
-.a3b6	a5 24		lda $24				lda 	zTemp3
-.a3b8	85 22		sta $22				sta 	zTemp2
-.a3ba	a5 25		lda $25				lda 	zTemp3+1
-.a3bc	85 23		sta $23				sta 	zTemp2+1
-.a3be					_TIM_LMLoop:
-.a3be	20 08 a3	jsr $a308			jsr 	TIM_GetHex 					; next byte ?
-.a3c1	b0 0e		bcs $a3d1			bcs 	_TIMLMDone 					; no more
-.a3c3	a2 00		ldx #$00			ldx 	#0							; write out.
-.a3c5	a5 24		lda $24				lda 	zTemp3
-.a3c7	81 22		sta ($22,x)			sta 	(zTemp2,x)
-.a3c9	e6 22		inc $22				inc 	zTemp2 						; bump address
-.a3cb	d0 f1		bne $a3be			bne 	_TIM_LMLoop
-.a3cd	e6 23		inc $23				inc 	zTemp2+1
-.a3cf	80 ed		bra $a3be			bra 	_TIM_LMLoop
-.a3d1					_TIMLMDone:
-.a3d1	4c e4 a1	jmp $a1e4			jmp 	TIM_NewCommand
+.aaf0					TIM_Error:
+.aaf0	a9 3f		lda #$3f			lda 	#"?"						; ? prompt
+.aaf2	80 02		bra $aaf6			bra 	TIM_ShowPrompt
+.aaf4					TIM_NewCommand:
+.aaf4	a9 2e		lda #$2e			lda 	#"."						; dot prompt
+.aaf6					TIM_ShowPrompt:
+.aaf6	20 83 a9	jsr $a983			jsr 	IFT_PrintCharacter
+.aaf9	20 3d aa	jsr $aa3d			jsr 	IFT_ReadLine	 			; get character, go to next line
+.aafc	20 9f a9	jsr $a99f			jsr 	IFT_NewLine
+.aaff	86 20		stx $20				stx 	zTemp1 						; save line read
+.ab01	84 21		sty $21				sty 	zTemp1+1
+.ab03	a0 01		ldy #$01			ldy 	#1 							; get first character
+.ab05	b1 20		lda ($20),y			lda 	(zTemp1),y
+.ab07	c9 52		cmp #$52			cmp 	#"R"						; show registers
+.ab09	f0 6f		beq $ab7a			beq 	TIM_ShowRegisters
+.ab0b	c9 4d		cmp #$4d			cmp 	#"M" 						; show memory
+.ab0d	f0 12		beq $ab21			beq 	TIM_ShowMemory
+.ab0f	c9 47		cmp #$47			cmp 	#"G"						; execute
+.ab11	f0 49		beq $ab5c			beq 	TIM_Execute
+.ab13	c9 3a		cmp #$3a			cmp 	#":"						; load memory
+.ab15	f0 07		beq $ab1e			beq 	TIM_GoLoadMemory
+.ab17	c9 3b		cmp #$3b			cmp 	#";" 						; load registers
+.ab19	d0 d5		bne $aaf0			bne 	TIM_Error
+.ab1b	4c 9e ac	jmp $ac9e			jmp 	TIM_UpdateRegisters
+.ab1e					TIM_GoLoadMemory:
+.ab1e	4c c9 ac	jmp $acc9			jmp 	TIM_LoadMemory
+.ab21					TIM_ShowMemory:
+.ab21	20 1b ac	jsr $ac1b			jsr 	TIM_GetHex 					; get a hex value out => zTemp3
+.ab24	b0 ca		bcs $aaf0			bcs 	TIM_Error
+.ab26	a5 24		lda $24				lda 	zTemp3 						; copy zTemp3 => zTemp2
+.ab28	85 22		sta $22				sta 	zTemp2
+.ab2a	a5 25		lda $25				lda 	zTemp3+1
+.ab2c	85 23		sta $23				sta 	zTemp2+1
+.ab2e	20 1b ac	jsr $ac1b			jsr 	TIM_GetHex 					; get a hex value out
+.ab31	90 08		bcc $ab3b			bcc 	_TIMSM_Start 				; okay, display zTemp2 ... zTemp3
+.ab33	a5 22		lda $22				lda 	zTemp2 						; set zTemp2 => zTemp3 so just one line.
+.ab35	85 24		sta $24				sta 	zTemp3
+.ab37	a5 23		lda $23				lda 	zTemp2+1
+.ab39	85 25		sta $25				sta 	zTemp3+1
+.ab3b					_TIMSM_Start:
+.ab3b	20 f3 ab	jsr $abf3			jsr 	TIM_WriteLine
+.ab3e	a5 22		lda $22				lda 	zTemp2 						; bump ZTemp2
+.ab40	18		clc				clc
+.ab41	69 10		adc #$10			adc 	#16
+.ab43	85 22		sta $22				sta 	zTemp2
+.ab45	90 02		bcc $ab49			bcc 	_TIMSM_NoCarry
+.ab47	e6 23		inc $23				inc 	zTemp2+1
+.ab49					_TIMSM_NoCarry:
+.ab49	20 36 a0	jsr $a036			jsr 	IF_CheckBreak 				; check CTL+C
+.ab4c	d0 0b		bne $ab59			bne 	_TIMSM_Ends
+.ab4e	38		sec				sec 								; check past.
+.ab4f	a5 24		lda $24				lda 	zTemp3
+.ab51	e5 22		sbc $22				sbc 	zTemp2
+.ab53	a5 25		lda $25				lda 	zTemp3+1
+.ab55	e5 23		sbc $23				sbc 	zTemp2+1
+.ab57	10 e2		bpl $ab3b			bpl 	_TIMSM_Start
+.ab59					_TIMSM_Ends:
+.ab59	4c f4 aa	jmp $aaf4			jmp 	TIM_NewCommand
+.ab5c					TIM_Execute:
+.ab5c	20 1b ac	jsr $ac1b			jsr 	TIM_GetHex 					; get the execute address
+.ab5f	b0 8f		bcs $aaf0			bcs 	TIM_Error
+.ab61	ea		nop				nop
+.ab62	ae 09 03	ldx $0309			ldx 	TIM_SP 						; set up S
+.ab65	9a		txs				txs
+.ab66	ad 04 03	lda $0304			lda 	TIM_SR 						; Status for PLP
+.ab69	48		pha				pha
+.ab6a	ad 05 03	lda $0305			lda 	TIM_A 						; restore AXYZ
+.ab6d	ae 06 03	ldx $0306			ldx 	TIM_X
+.ab70	ac 07 03	ldy $0307			ldy 	TIM_Y
+.ab73	ab 08 03	ldz $0308			ldz 	TIM_Z
+.ab76	28		plp				plp 								; and PS Byte.
+.ab77	6c 24 00	jmp ($0024)			jmp 	(zTemp3)					; go execute
+.ab7a					TIM_Start:
+.ab7a					TIM_ShowRegisters:
+.ab7a	ad fe ff	lda $fffe			lda 	$FFFE 						; copy IRQx
+.ab7d	8d 03 03	sta $0303			sta 	TIM_IRQ+1
+.ab80	ad ff ff	lda $ffff			lda 	$FFFF
+.ab83	8d 02 03	sta $0302			sta 	TIM_IRQ
+.ab86	a2 00		ldx #$00			ldx 	#0 							; display register prompt
+.ab88					_TIMSR_Text:
+.ab88	bd b3 ab	lda $abb3,x			lda 	_TIMSR_Label,x
+.ab8b	20 83 a9	jsr $a983			jsr 	IFT_PrintCharacter
+.ab8e	e8		inx				inx
+.ab8f	e0 27		cpx #$27			cpx 	#_TIMSR_LabelEnd-_TIMSR_Label
+.ab91	d0 f5		bne $ab88			bne 	_TIMSR_Text
+.ab93	a2 00		ldx #$00			ldx 	#0 							; output Register Line.
+.ab95					_TIMSR_LoopSpace:
+.ab95	e0 04		cpx #$04			cpx 	#4
+.ab97	b0 04		bcs $ab9d			bcs 	_TIMSR_Space
+.ab99	8a		txa				txa
+.ab9a	4a		lsr a				lsr 	a
+.ab9b	b0 05		bcs $aba2			bcs 	_TIMSR_NoSpace
+.ab9d					_TIMSR_Space:
+.ab9d	a9 20		lda #$20			lda 	#" "
+.ab9f	20 83 a9	jsr $a983			jsr 	IFT_PrintCharacter
+.aba2					_TIMSR_NoSpace:
+.aba2	bd 00 03	lda $0300,x			lda 	TIM_PC,x 					; output hex value.
+.aba5	20 da ab	jsr $abda			jsr 	TIM_WriteHex
+.aba8	e8		inx				inx
+.aba9	e0 0a		cpx #$0a			cpx 	#TIM_SP-TIM_PC+1
+.abab	d0 e8		bne $ab95			bne 	_TimSR_LoopSpace
+.abad	20 9f a9	jsr $a99f			jsr 	IFT_NewLine
+.abb0	4c f4 aa	jmp $aaf4			jmp	 	TIM_NewCommand
+.abb3					_TIMSR_Label:
+>abb3	54 49 4d 36 35 20 50 43				.text 	"TIM65 PC   IRQ  SR AC XR YR ZR SP",13,".;   "
+>abbb	20 20 20 49 52 51 20 20 53 52 20 41 43 20 58 52
+>abcb	20 59 52 20 5a 52 20 53 50 0d 2e 3b 20 20 20
+.abda					_TIMSR_LabelEnd:
+.abda					TIM_WriteHex:
+.abda	48		pha				pha
+.abdb	4a		lsr a				lsr 	a
+.abdc	4a		lsr a				lsr 	a
+.abdd	4a		lsr a				lsr 	a
+.abde	4a		lsr a				lsr 	a
+.abdf	20 e3 ab	jsr $abe3			jsr 	_TIMWH_Nibble
+.abe2	68		pla				pla
+.abe3					_TIMWH_Nibble:
+.abe3	48		pha				pha
+.abe4	29 0f		and #$0f			and 	#15
+.abe6	c9 0a		cmp #$0a			cmp 	#10
+.abe8	90 02		bcc $abec			bcc 	_TIMWHNoLetter
+.abea	69 06		adc #$06			adc 	#6
+.abec					_TIMWHNoLetter:
+.abec	69 30		adc #$30			adc 	#48
+.abee	20 83 a9	jsr $a983			jsr 	IFT_PrintCharacter
+.abf1	68		pla				pla
+.abf2	60		rts				rts
+.abf3					TIM_WriteLine:
+.abf3	a9 2e		lda #$2e			lda 	#"."
+.abf5	20 83 a9	jsr $a983			jsr 	IFT_PrintCharacter
+.abf8	a9 3a		lda #$3a			lda 	#":"
+.abfa	20 83 a9	jsr $a983			jsr 	IFT_PrintCharacter
+.abfd	a5 23		lda $23				lda 	zTemp2+1
+.abff	20 da ab	jsr $abda			jsr 	TIM_WriteHex
+.ac02	a5 22		lda $22				lda 	zTemp2
+.ac04	20 da ab	jsr $abda			jsr 	TIM_WriteHex
+.ac07	a0 00		ldy #$00			ldy 	#0
+.ac09					_TIMWL_Loop:
+.ac09	a9 20		lda #$20			lda 	#" "
+.ac0b	20 83 a9	jsr $a983			jsr 	IFT_PrintCharacter
+.ac0e	b1 22		lda ($22),y			lda 	(zTemp2),y
+.ac10	20 da ab	jsr $abda			jsr 	TIM_WriteHex
+.ac13	c8		iny				iny
+.ac14	c0 10		cpy #$10			cpy 	#16
+.ac16	d0 f1		bne $ac09			bne 	_TIMWL_Loop
+.ac18	4c 9f a9	jmp $a99f			jmp 	IFT_NewLine
+.ac1b					TIM_GetHex:
+.ac1b	c8		iny				iny
+.ac1c	b1 20		lda ($20),y			lda 	(zTemp1),y 					; skip over spaces.
+.ac1e	c9 20		cmp #$20			cmp 	#32
+.ac20	f0 f9		beq $ac1b			beq 	TIM_GetHex
+.ac22	20 4b ac	jsr $ac4b			jsr 	TIM_GetHexCharacter 		; extract one hex character.
+.ac25	b0 23		bcs $ac4a			bcs 	_TIMGH_Exit					; if first bad then exit now.
+.ac27	a9 00		lda #$00			lda 	#0 							; zero result
+.ac29	85 24		sta $24				sta 	zTemp3
+.ac2b	85 25		sta $25				sta 	zTemp3+1
+.ac2d					_TIM_GHLoop:
+.ac2d	20 4b ac	jsr $ac4b			jsr 	TIM_GetHexCharacter 		; get next character
+.ac30	b0 17		bcs $ac49			bcs 	_TIMGH_Okay 				; if bad, exit as we have one good one.
+.ac32	c8		iny				iny 								; skip over it.
+.ac33	06 24		asl $24				asl 	zTemp3 						; x zTemp3 by 16
+.ac35	26 25		rol $25				rol 	zTemp3+1
+.ac37	06 24		asl $24				asl 	zTemp3 						; now x 2
+.ac39	26 25		rol $25				rol 	zTemp3+1
+.ac3b	06 24		asl $24				asl 	zTemp3						; now x 4
+.ac3d	26 25		rol $25				rol 	zTemp3+1
+.ac3f	06 24		asl $24				asl 	zTemp3 						; now x 8
+.ac41	26 25		rol $25				rol 	zTemp3+1
+.ac43	05 24		ora $24				ora 	zTemp3 						; OR result in
+.ac45	85 24		sta $24				sta 	zTemp3
+.ac47	80 e4		bra $ac2d			bra 	_TIM_GHLoop 				; loop round again.
+.ac49					_TIMGH_Okay:
+.ac49	18		clc				clc
+.ac4a					_TIMGH_Exit:
+.ac4a	60		rts				rts
+.ac4b					TIM_GetHexCharacter:
+.ac4b	b1 20		lda ($20),y			lda 	(zTemp1),y
+.ac4d	38		sec				sec
+.ac4e	e9 30		sbc #$30			sbc 	#"0" 						; < 0 exit with CS
+.ac50	90 0e		bcc $ac60			bcc 	_TIM_GHCFail
+.ac52	c9 0a		cmp #$0a			cmp 	#10 						; 0-9 exit with CC
+.ac54	90 0b		bcc $ac61			bcc 	_TIM_GHCExit
+.ac56	c9 11		cmp #$11			cmp 	#65-48						; < A
+.ac58	90 06		bcc $ac60			bcc		_TIM_GHCFail
+.ac5a	e9 07		sbc #$07			sbc 	#7 							; adjust for gap from 9-A
+.ac5c	c9 10		cmp #$10			cmp 	#16 						; result in range okay.
+.ac5e	90 01		bcc $ac61			bcc		_TIM_GHCExit
+.ac60					_TIM_GHCFail:
+.ac60	38		sec				sec
+.ac61					_TIM_GHCExit:
+.ac61	60		rts				rts
+.ac62					TIM_BreakVector:
+.ac62	da		phx				phx									; save X/A on stack
+.ac63	48		pha				pha
+.ac64	ba		tsx				tsx 								; X points to S
+.ac65	bd 03 01	lda $0103,x			lda 	$0103,x 					; PSW saved on stack.
+.ac68	29 10		and #$10			and 	#$10 						; check stacked B Flag
+.ac6a	d0 03		bne $ac6f			bne 	_TIMBreak					; if set, it's BRK
+.ac6c	68		pla				pla 								; abandon
+.ac6d	fa		plx				plx
+.ac6e	40		rti				rti
+.ac6f					_TIMBreak:
+.ac6f	68		pla				pla
+.ac70	8d 05 03	sta $0305			sta 	TIM_A
+.ac73	fa		plx				plx
+.ac74	8e 06 03	stx $0306			stx 	TIM_X
+.ac77	8c 07 03	sty $0307			sty 	TIM_Y
+.ac7a	9c 08 03	stz $0308			stz 	TIM_Z
+.ac7d	68		pla				pla 								; get P
+.ac7e	8d 04 03	sta $0304			sta 	TIM_SR
+.ac81	68		pla				pla
+.ac82	8d 01 03	sta $0301			sta 	TIM_PC+1 					; save calling address
+.ac85	68		pla				pla
+.ac86	8d 00 03	sta $0300			sta 	TIM_PC 						; high byte
+.ac89	ad 01 03	lda $0301			lda 	TIM_PC+1 					; dec PC to point right.
+.ac8c	d0 03		bne $ac91			bne 	_TIMDecrement
+.ac8e	ce 00 03	dec $0300			dec 	TIM_PC
+.ac91					_TIMDecrement:
+.ac91	ce 01 03	dec $0301			dec 	TIM_PC+1
+.ac94	ba		tsx				tsx
+.ac95	8e 09 03	stx $0309			stx 	TIM_SP 						; and SP
+.ac98	a2 ff		ldx #$ff			ldx 	#$FF 						; reset SP
+.ac9a	9a		txs				txs
+.ac9b	4c 7a ab	jmp $ab7a			jmp 	TIM_Start
+.ac9e					TIM_UpdateRegisters:
+.ac9e	20 1b ac	jsr $ac1b			jsr 	TIM_GetHex 					; PC
+.aca1	b0 23		bcs $acc6			bcs 	_TIMURFail
+.aca3	a5 24		lda $24				lda 	zTemp3
+.aca5	8d 01 03	sta $0301			sta 	Tim_PC+1
+.aca8	a5 25		lda $25				lda 	zTemp3+1
+.acaa	8d 00 03	sta $0300			sta 	Tim_PC
+.acad	20 1b ac	jsr $ac1b			jsr 	TIM_GetHex 					; ignore IRQ
+.acb0	b0 14		bcs $acc6			bcs 	_TIMURFail
+.acb2	a2 00		ldx #$00			ldx 	#0
+.acb4					_TIM_URLoop:
+.acb4	20 1b ac	jsr $ac1b			jsr 	TIM_GetHex 					; registers
+.acb7	b0 0d		bcs $acc6			bcs 	_TIMURFail
+.acb9	a5 24		lda $24				lda 	zTemp3
+.acbb	9d 04 03	sta $0304,x			sta 	Tim_SR,x
+.acbe	e8		inx				inx
+.acbf	e0 06		cpx #$06			cpx 	#Tim_SP-Tim_SR+1
+.acc1	d0 f1		bne $acb4			bne 	_TIM_URLoop
+.acc3	4c f4 aa	jmp $aaf4			jmp 	TIM_NewCommand
+.acc6					_TIMURFail:
+.acc6	4c f0 aa	jmp $aaf0			jmp 	TIM_Error
+.acc9					TIM_LoadMemory:
+.acc9	20 1b ac	jsr $ac1b			jsr 	TIM_GetHex 					; target address => zTemp2
+.accc	a5 24		lda $24				lda 	zTemp3
+.acce	85 22		sta $22				sta 	zTemp2
+.acd0	a5 25		lda $25				lda 	zTemp3+1
+.acd2	85 23		sta $23				sta 	zTemp2+1
+.acd4					_TIM_LMLoop:
+.acd4	20 1b ac	jsr $ac1b			jsr 	TIM_GetHex 					; next byte ?
+.acd7	b0 0e		bcs $ace7			bcs 	_TIMLMDone 					; no more
+.acd9	a2 00		ldx #$00			ldx 	#0							; write out.
+.acdb	a5 24		lda $24				lda 	zTemp3
+.acdd	81 22		sta ($22,x)			sta 	(zTemp2,x)
+.acdf	e6 22		inc $22				inc 	zTemp2 						; bump address
+.ace1	d0 f1		bne $acd4			bne 	_TIM_LMLoop
+.ace3	e6 23		inc $23				inc 	zTemp2+1
+.ace5	80 ed		bra $acd4			bra 	_TIM_LMLoop
+.ace7					_TIMLMDone:
+.ace7	4c f4 aa	jmp $aaf4			jmp 	TIM_NewCommand
 
 ;******  Return to file: basic.asm
 
@@ -637,628 +925,846 @@
 
 ;******  Processing file: arithmetic/fputils.asm
 
-.a3d4					FPUSetBFromXY:
-.a3d4	48		pha				pha
-.a3d5	86 18		stx $18				stx 	B_Mantissa 					; set the lower 2 bytes
-.a3d7	84 19		sty $19				sty 	B_Mantissa+1
-.a3d9	98		tya				tya
-.a3da	0a		asl a				asl 	a 							; CS if MSB set.
-.a3db	a9 00		lda #$00			lda 	#0 							; 0 if CC,$FF if CS
-.a3dd	90 01		bcc $a3e0			bcc 	_FPUSB1
-.a3df	3a		dec a				dec 	a
-.a3e0	85 1a		sta $1a		_FPUSB1:sta 	B_Mantissa+2 				; these are the two ms bytes
-.a3e2	85 1b		sta $1b				sta 	B_Mantissa+3
-.a3e4	a9 00		lda #$00			lda 	#Type_Integer 				; type is integer.
-.a3e6	85 1f		sta $1f				sta 	B_Type
-.a3e8	68		pla				pla
-.a3e9	60		rts				rts
-.a3ea					FPUCopyAToB:
-.a3ea	48		pha				pha 								; copy the 8 byte format across.
-.a3eb	da		phx				phx
-.a3ec	a2 07		ldx #$07			ldx 	#7
-.a3ee					_FPUCopy2:
-.a3ee	b5 10		lda $10,x			lda 	A_Mantissa,x
-.a3f0	95 18		sta $18,x			sta 	B_Mantissa,x
-.a3f2	ca		dex				dex
-.a3f3	10 f9		bpl $a3ee			bpl 	_FPUCopy2
-.a3f5	fa		plx				plx
-.a3f6	68		pla				pla
-.a3f7	60		rts				rts
-.a3f8					FPUCopyBToA:
-.a3f8	48		pha				pha 								; copy the 8 byte format across.
-.a3f9	da		phx				phx
-.a3fa	a2 07		ldx #$07			ldx 	#7
-.a3fc					_FPUCopy1:
-.a3fc	b5 18		lda $18,x			lda 	B_Mantissa,x
-.a3fe	95 10		sta $10,x			sta 	A_Mantissa,x
-.a400	ca		dex				dex
-.a401	10 f9		bpl $a3fc			bpl 	_FPUCopy1
-.a403	fa		plx				plx
-.a404	68		pla				pla
-.a405	60		rts				rts
-.a406					FPUToFloatX:
-.a406	48		pha				pha
-.a407	b5 17		lda $17,x			lda 	A_Type,x					; exit if already float.
-.a409	30 26		bmi $a431			bmi 	_FPUBExit
-.a40b	a9 80		lda #$80			lda 	#Type_Float 				; set float type
-.a40d	95 17		sta $17,x			sta 	A_Type,x
-.a40f	a9 20		lda #$20			lda 	#32 						; and the exponent to 32, makes it * 2^32
-.a411	95 14		sta $14,x			sta 	A_Exponent,x
-.a413	a9 00		lda #$00			lda 	#0 							; clear sign/zero bytes
-.a415	95 15		sta $15,x			sta 	A_Sign,x
-.a417	95 16		sta $16,x			sta		A_Zero,x
-.a419	b5 13		lda $13,x			lda 	A_Mantissa+3,x 				; signed integer ?
-.a41b	10 05		bpl $a422			bpl		_FPUBPositive
-.a41d	20 fa a4	jsr $a4fa			jsr 	FPUIntegerNegateX 			; do B = -B in integer, so +ve mantissa
-.a420	d6 15		dec $15,x			dec 	A_Sign,x 					; set the sign byte to $FF
-.a422					_FPUBPositive:
-.a422	a5 18		lda $18				lda 	B_Mantissa 							; check if \1 zero
-.a424	05 19		ora $19				ora 	B_Mantissa+1
-.a426	05 1a		ora $1a				ora 	B_Mantissa+2
-.a428	05 1b		ora $1b				ora 	B_Mantissa+3
-.a42a	d0 02		bne $a42e			bne 	_FPUBNonZero
-.a42c	d6 16		dec $16,x			dec 	A_Zero,x 					; set the zero byte to $FF
-.a42e					_FPUBNonZero:
-.a42e	20 dd a4	jsr $a4dd			jsr 	FPUNormaliseX
-.a431					_FPUBExit:
-.a431	68		pla				pla
-.a432	60		rts				rts
-.a433					FPUAToInteger:
-.a433	48		pha				pha
-.a434	a5 17		lda $17				lda 	A_Type 						; if already integer, exit
-.a436	f0 39		beq $a471			beq 	_FPUATOI_Exit
-.a438	a9 00		lda #$00			lda 	#Type_Integer 				; make type zero (integer)
-.a43a	85 17		sta $17				sta 	A_Type
-.a43c	a5 16		lda $16				lda 	A_Zero						; if zero, return zero.
-.a43e	d0 27		bne $a467			bne 	_FPUATOI_Zero
-.a440	a5 14		lda $14				lda 	A_Exponent 					; check -ve exponent or < 32
-.a442	30 04		bmi $a448			bmi 	_FPUAToIOk
-.a444	c9 20		cmp #$20			cmp 	#32 						; sign exponent >= 32, overflow.
-.a446	b0 2b		bcs $a473			bcs 	FP_Overflow
-.a448					_FPUAToIOk:
-.a448					_FPUAToIToInteger:
-.a448	a5 14		lda $14				lda 	A_Exponent 					; reached ^32
-.a44a	c9 20		cmp #$20			cmp 	#32
-.a44c	f0 0c		beq $a45a			beq 	_FPUAtoICheckSign 			; check sign needs fixing up.
-.a44e	e6 14		inc $14				inc 	A_Exponent 					; increment Exponent
-.a450	46 13		lsr $13				lsr 	3+A_Mantissa
-.a452	66 12		ror $12				ror 	2+A_Mantissa
-.a454	66 11		ror $11				ror 	1+A_Mantissa
-.a456	66 10		ror $10				ror 	0+A_Mantissa
-.a458	80 ee		bra $a448			bra 	_FPUAToIToInteger 			; keep going.
-.a45a					_FPUAtoICheckSign:
-.a45a	a5 15		lda $15				lda 	A_Sign 						; check sign
-.a45c	f0 13		beq $a471			beq 	_FPUAToI_Exit 				; exit if unsigned.
-.a45e	da		phx				phx
-.a45f	a2 00		ldx #$00			ldx 	#0
-.a461	20 fa a4	jsr $a4fa			jsr 	FPUIntegerNegateX 			; otherwise negate the shifted mantissa
-.a464	fa		plx				plx
-.a465	80 0a		bra $a471			bra 	_FPUATOI_Exit
-.a467					_FPUATOI_Zero:
-.a467	a9 00		lda #$00			lda 	#0 							; return zero integer.
-.a469	85 10		sta $10				sta 	A_Mantissa+0
-.a46b	85 11		sta $11				sta 	A_Mantissa+1
-.a46d	85 12		sta $12				sta 	A_Mantissa+2
-.a46f	85 13		sta $13				sta 	A_Mantissa+3
-.a471					_FPUATOI_Exit:
-.a471	68		pla				pla
-.a472	60		rts				rts
-.a473					FP_Overflow:
-.a473	20 b9 a7	jsr $a7b9			jsr 	ERR_Handler
->a476	46 6c 6f 61 74 69 6e 67				.text 	"Floating Point overflow",0
->a47e	20 50 6f 69 6e 74 20 6f 76 65 72 66 6c 6f 77 00
-.a48e					FPUTimes10X:
-.a48e	b5 10		lda $10,x			lda 	A_Mantissa+0,x 				; copy mantissa to ZLTemp1
-.a490	85 26		sta $26				sta 	ZLTemp1+0
-.a492	b5 11		lda $11,x			lda 	A_Mantissa+1,x
-.a494	95 27		sta $27,x			sta 	ZLTemp1+1,x
-.a496	b5 12		lda $12,x			lda 	A_Mantissa+2,x
-.a498	95 28		sta $28,x			sta 	ZLTemp1+2,x
-.a49a	b5 13		lda $13,x			lda 	A_Mantissa+3,x
-.a49c	95 29		sta $29,x			sta 	ZLTemp1+3,x
-.a49e	46 29		lsr $29				lsr 	3+ZLTemp1
-.a4a0	66 28		ror $28				ror 	2+ZLTemp1
-.a4a2	66 27		ror $27				ror 	1+ZLTemp1
-.a4a4	66 26		ror $26				ror 	0+ZLTemp1
-.a4a6	46 29		lsr $29				lsr 	3+ZLTemp1
-.a4a8	66 28		ror $28				ror 	2+ZLTemp1
-.a4aa	66 27		ror $27				ror 	1+ZLTemp1
-.a4ac	66 26		ror $26				ror 	0+ZLTemp1
-.a4ae	18		clc				clc
-.a4af	b5 10		lda $10,x			lda 	A_Mantissa+0,x
-.a4b1	75 26		adc $26,x			adc 	ZLTemp1+0,x
-.a4b3	95 10		sta $10,x			sta 	A_Mantissa+0,x
-.a4b5	b5 11		lda $11,x			lda 	A_Mantissa+1,x
-.a4b7	75 27		adc $27,x			adc 	ZLTemp1+1,x
-.a4b9	95 11		sta $11,x			sta 	A_Mantissa+1,x
-.a4bb	b5 12		lda $12,x			lda 	A_Mantissa+2,x
-.a4bd	75 28		adc $28,x			adc 	ZLTemp1+2,x
-.a4bf	95 12		sta $12,x			sta 	A_Mantissa+2,x
-.a4c1	b5 13		lda $13,x			lda 	A_Mantissa+3,x
-.a4c3	75 29		adc $29,x			adc 	ZLTemp1+3,x
-.a4c5	95 13		sta $13,x			sta 	A_Mantissa+3,x
-.a4c7	90 0a		bcc $a4d3			bcc 	_FPUTimes10
-.a4c9	76 13		ror $13,x			ror 	3+A_Mantissa,x
-.a4cb	76 12		ror $12,x			ror 	2+A_Mantissa,x
-.a4cd	76 11		ror $11,x			ror 	1+A_Mantissa,x
-.a4cf	76 10		ror $10,x			ror 	0+A_Mantissa,x
-.a4d1	f6 14		inc $14,x			inc 	A_Exponent,x				; fix exponent
-.a4d3					_FPUTimes10:
-.a4d3	b5 14		lda $14,x			lda 	A_Exponent,x 				; fix up x 2^3
-.a4d5	18		clc				clc
-.a4d6	69 03		adc #$03			adc 	#3
-.a4d8	95 14		sta $14,x			sta 	A_Exponent,x
-.a4da	70 97		bvs $a473			bvs 	FP_Overflow 				; error
-.a4dc	60		rts				rts
-.a4dd					FPUNormaliseX:
-.a4dd	48		pha				pha
-.a4de	b5 16		lda $16,x			lda 	A_Zero,x 					; if float-zero, don't need to normalise it.
-.a4e0	d0 16		bne $a4f8			bne 	_FPUNExit
-.a4e2					_FPULoop:
-.a4e2	b5 13		lda $13,x			lda 	A_Mantissa+3,x 				; bit 31 of mantissa set.
-.a4e4	30 12		bmi $a4f8			bmi 	_FPUNExit 					; if so, we are normalised.
-.a4e6	16 10		asl $10,x			asl 	0+A_Mantissa+0,x
-.a4e8	36 11		rol $11,x			rol 	1+A_Mantissa+0,x
-.a4ea	36 12		rol $12,x			rol 	2+A_Mantissa+0,x
-.a4ec	36 13		rol $13,x			rol 	3+A_Mantissa+0,x
-.a4ee	d6 14		dec $14,x			dec 	A_Exponent,x 				; decrement exponent
-.a4f0	b5 14		lda $14,x			lda 	A_Exponent,x 				; if exponent not $7F (e.g. gone < -$80)
-.a4f2	c9 7f		cmp #$7f			cmp 	#$7F
-.a4f4	d0 ec		bne $a4e2			bne 	_FPULoop
-.a4f6	d6 16		dec $16,x			dec 	A_Zero,x 					; the result is now zero.
-.a4f8					_FPUNExit:
-.a4f8	68		pla				pla
-.a4f9	60		rts				rts
-.a4fa					FPUIntegerNegateX:
-.a4fa	48		pha				pha
-.a4fb	38		sec				sec
-.a4fc	a9 00		lda #$00			lda 	#0
-.a4fe	f5 10		sbc $10,x			sbc 	A_Mantissa+0,x
-.a500	95 10		sta $10,x			sta 	A_Mantissa+0,x
-.a502	a9 00		lda #$00			lda 	#0
-.a504	f5 11		sbc $11,x			sbc 	A_Mantissa+1,x
-.a506	95 11		sta $11,x			sta 	A_Mantissa+1,x
-.a508	a9 00		lda #$00			lda 	#0
-.a50a	f5 12		sbc $12,x			sbc 	A_Mantissa+2,x
-.a50c	95 12		sta $12,x			sta 	A_Mantissa+2,x
-.a50e	a9 00		lda #$00			lda 	#0
-.a510	f5 13		sbc $13,x			sbc 	A_Mantissa+3,x
-.a512	95 13		sta $13,x			sta 	A_Mantissa+3,X
-.a514	68		pla				pla
-.a515	60		rts				rts
-.a516					FPCompare:
-.a516	a5 14		lda $14				lda 	A_Exponent 					; save the exponents on the stack
-.a518	48		pha				pha
-.a519	a5 1c		lda $1c				lda 	B_Exponent
-.a51b	48		pha				pha
-.a51c	20 5a a5	jsr $a55a			jsr 	FPSubtract 					; calculate A-B
-.a51f	a5 16		lda $16				lda 	A_Zero 						; is the result zero ?
-.a521	d0 32		bne $a555			bne 	_FPCPullZero 				; if so, then return zero throwing saved exp
-.a523	68		pla				pla
-.a524	85 18		sta $18				sta 	B_Mantissa 					; BM+0 is BX
-.a526	68		pla				pla
-.a527	85 19		sta $19				sta 	B_Mantissa+1 				; BM+1 is AX
-.a529	38		sec				sec
-.a52a	e5 18		sbc $18				sbc 	B_Mantissa 					; AX-BX
-.a52c	70 1f		bvs $a54d			bvs 	_FPCNotEqual				; overflow, can't be equal.
-.a52e	1a		inc a				inc 	a 							; map -1,0,1 to 0,1,2
-.a52f	c9 03		cmp #$03			cmp 	#3 							; if >= 3 e.g. abs difference > 1
-.a531	b0 1a		bcs $a54d			bcs 	_FPCNotEqual
-.a533	18		clc				clc
-.a534	a5 18		lda $18				lda 	B_Mantissa 					; mean of exponents
-.a536	65 19		adc $19				adc 	B_Mantissa+1
-.a538	6a		ror a				ror 	a 							; shift carry out back in.
-.a539	38		sec				sec
-.a53a	e9 0c		sbc #$0c			sbc 	#12 						; allow for 2^12 error, relatively, about 4 DP ish.
-.a53c	50 02		bvc $a540			bvc 	_FPCNotRange 				; keep in range.
-.a53e	a9 80		lda #$80			lda 	#$80
-.a540					_FPCNotRange:
-.a540	38		sec				sec
-.a541	e5 14		sbc $14				sbc 	A_Exponent  				; if exponent of difference more than this.
-.a543	50 02		bvc $a547			bvc 	_FPCNotOverflow 			; signed comparison
-.a545	49 80		eor #$80			eor 	#$80
-.a547					_FPCNotOverflow:
-.a547	30 04		bmi $a54d			bmi 	_FPCNotEqual 				; then error is too large, so return -1 or 1
-.a549	a9 00		lda #$00			lda 	#0 							; "approximately equal" allowing for rounding
-.a54b	80 0c		bra $a559			bra 	_FPCExit 					; errors.
-.a54d					_FPCNotEqual:
-.a54d	a5 15		lda $15				lda 	A_Sign 						; if sign is -ve , will be $FF, so return $FF
-.a54f	d0 08		bne $a559			bne 	_FPCExit
-.a551	a9 01		lda #$01			lda 	#1 							; otherwise return $01 as not zero.
-.a553	80 04		bra $a559			bra 	_FPCExit
-.a555					_FPCPullZero:
-.a555	68		pla				pla 								; throw saved exponents
-.a556	68		pla				pla
-.a557	a9 00		lda #$00			lda 	#0 							; and return zero
-.a559					_FPCExit:
-.a559	60		rts				rts
+.acea					FPUSetBFromXY:
+.acea	48		pha				pha
+.aceb	86 18		stx $18				stx 	B_Mantissa 					; set the lower 2 bytes
+.aced	84 19		sty $19				sty 	B_Mantissa+1
+.acef	98		tya				tya
+.acf0	0a		asl a				asl 	a 							; CS if MSB set.
+.acf1	a9 00		lda #$00			lda 	#0 							; 0 if CC,$FF if CS
+.acf3	90 01		bcc $acf6			bcc 	_FPUSB1
+.acf5	3a		dec a				dec 	a
+.acf6	85 1a		sta $1a		_FPUSB1:sta 	B_Mantissa+2 				; these are the two ms bytes
+.acf8	85 1b		sta $1b				sta 	B_Mantissa+3
+.acfa	a9 00		lda #$00			lda 	#Type_Integer 				; type is integer.
+.acfc	85 1f		sta $1f				sta 	B_Type
+.acfe	68		pla				pla
+.acff	60		rts				rts
+.ad00					FPUCopyAToB:
+.ad00	48		pha				pha 								; copy the 8 byte format across.
+.ad01	da		phx				phx
+.ad02	a2 07		ldx #$07			ldx 	#7
+.ad04					_FPUCopy2:
+.ad04	b5 10		lda $10,x			lda 	A_Mantissa,x
+.ad06	95 18		sta $18,x			sta 	B_Mantissa,x
+.ad08	ca		dex				dex
+.ad09	10 f9		bpl $ad04			bpl 	_FPUCopy2
+.ad0b	fa		plx				plx
+.ad0c	68		pla				pla
+.ad0d	60		rts				rts
+.ad0e					FPUCopyBToA:
+.ad0e	48		pha				pha 								; copy the 8 byte format across.
+.ad0f	da		phx				phx
+.ad10	a2 07		ldx #$07			ldx 	#7
+.ad12					_FPUCopy1:
+.ad12	b5 18		lda $18,x			lda 	B_Mantissa,x
+.ad14	95 10		sta $10,x			sta 	A_Mantissa,x
+.ad16	ca		dex				dex
+.ad17	10 f9		bpl $ad12			bpl 	_FPUCopy1
+.ad19	fa		plx				plx
+.ad1a	68		pla				pla
+.ad1b	60		rts				rts
+.ad1c					FPUToFloatX:
+.ad1c	48		pha				pha
+.ad1d	b5 17		lda $17,x			lda 	A_Type,x					; exit if already float.
+.ad1f	30 26		bmi $ad47			bmi 	_FPUBExit
+.ad21	a9 80		lda #$80			lda 	#Type_Float 				; set float type
+.ad23	95 17		sta $17,x			sta 	A_Type,x
+.ad25	a9 20		lda #$20			lda 	#32 						; and the exponent to 32, makes it * 2^32
+.ad27	95 14		sta $14,x			sta 	A_Exponent,x
+.ad29	a9 00		lda #$00			lda 	#0 							; clear sign/zero bytes
+.ad2b	95 15		sta $15,x			sta 	A_Sign,x
+.ad2d	95 16		sta $16,x			sta		A_Zero,x
+.ad2f	b5 13		lda $13,x			lda 	A_Mantissa+3,x 				; signed integer ?
+.ad31	10 05		bpl $ad38			bpl		_FPUBPositive
+.ad33	20 10 ae	jsr $ae10			jsr 	FPUIntegerNegateX 			; do B = -B in integer, so +ve mantissa
+.ad36	d6 15		dec $15,x			dec 	A_Sign,x 					; set the sign byte to $FF
+.ad38					_FPUBPositive:
+.ad38	a5 18		lda $18				lda 	B_Mantissa 							; check if \1 zero
+.ad3a	05 19		ora $19				ora 	B_Mantissa+1
+.ad3c	05 1a		ora $1a				ora 	B_Mantissa+2
+.ad3e	05 1b		ora $1b				ora 	B_Mantissa+3
+.ad40	d0 02		bne $ad44			bne 	_FPUBNonZero
+.ad42	d6 16		dec $16,x			dec 	A_Zero,x 					; set the zero byte to $FF
+.ad44					_FPUBNonZero:
+.ad44	20 f3 ad	jsr $adf3			jsr 	FPUNormaliseX
+.ad47					_FPUBExit:
+.ad47	68		pla				pla
+.ad48	60		rts				rts
+.ad49					FPUAToInteger:
+.ad49	48		pha				pha
+.ad4a	a5 17		lda $17				lda 	A_Type 						; if already integer, exit
+.ad4c	f0 39		beq $ad87			beq 	_FPUATOI_Exit
+.ad4e	a9 00		lda #$00			lda 	#Type_Integer 				; make type zero (integer)
+.ad50	85 17		sta $17				sta 	A_Type
+.ad52	a5 16		lda $16				lda 	A_Zero						; if zero, return zero.
+.ad54	d0 27		bne $ad7d			bne 	_FPUATOI_Zero
+.ad56	a5 14		lda $14				lda 	A_Exponent 					; check -ve exponent or < 32
+.ad58	30 04		bmi $ad5e			bmi 	_FPUAToIOk
+.ad5a	c9 20		cmp #$20			cmp 	#32 						; sign exponent >= 32, overflow.
+.ad5c	b0 2b		bcs $ad89			bcs 	FP_Overflow
+.ad5e					_FPUAToIOk:
+.ad5e					_FPUAToIToInteger:
+.ad5e	a5 14		lda $14				lda 	A_Exponent 					; reached ^32
+.ad60	c9 20		cmp #$20			cmp 	#32
+.ad62	f0 0c		beq $ad70			beq 	_FPUAtoICheckSign 			; check sign needs fixing up.
+.ad64	e6 14		inc $14				inc 	A_Exponent 					; increment Exponent
+.ad66	46 13		lsr $13				lsr 	3+A_Mantissa
+.ad68	66 12		ror $12				ror 	2+A_Mantissa
+.ad6a	66 11		ror $11				ror 	1+A_Mantissa
+.ad6c	66 10		ror $10				ror 	0+A_Mantissa
+.ad6e	80 ee		bra $ad5e			bra 	_FPUAToIToInteger 			; keep going.
+.ad70					_FPUAtoICheckSign:
+.ad70	a5 15		lda $15				lda 	A_Sign 						; check sign
+.ad72	f0 13		beq $ad87			beq 	_FPUAToI_Exit 				; exit if unsigned.
+.ad74	da		phx				phx
+.ad75	a2 00		ldx #$00			ldx 	#0
+.ad77	20 10 ae	jsr $ae10			jsr 	FPUIntegerNegateX 			; otherwise negate the shifted mantissa
+.ad7a	fa		plx				plx
+.ad7b	80 0a		bra $ad87			bra 	_FPUATOI_Exit
+.ad7d					_FPUATOI_Zero:
+.ad7d	a9 00		lda #$00			lda 	#0 							; return zero integer.
+.ad7f	85 10		sta $10				sta 	A_Mantissa+0
+.ad81	85 11		sta $11				sta 	A_Mantissa+1
+.ad83	85 12		sta $12				sta 	A_Mantissa+2
+.ad85	85 13		sta $13				sta 	A_Mantissa+3
+.ad87					_FPUATOI_Exit:
+.ad87	68		pla				pla
+.ad88	60		rts				rts
+.ad89					FP_Overflow:
+.ad89	20 15 b2	jsr $b215			jsr 	ERR_Handler
+>ad8c	46 6c 6f 61 74 69 6e 67				.text 	"Floating Point overflow",0
+>ad94	20 50 6f 69 6e 74 20 6f 76 65 72 66 6c 6f 77 00
+.ada4					FPUTimes10X:
+.ada4	b5 10		lda $10,x			lda 	A_Mantissa+0,x 				; copy mantissa to ZLTemp1
+.ada6	85 26		sta $26				sta 	ZLTemp1+0
+.ada8	b5 11		lda $11,x			lda 	A_Mantissa+1,x
+.adaa	85 27		sta $27				sta 	ZLTemp1+1
+.adac	b5 12		lda $12,x			lda 	A_Mantissa+2,x
+.adae	85 28		sta $28				sta 	ZLTemp1+2
+.adb0	b5 13		lda $13,x			lda 	A_Mantissa+3,x
+.adb2	85 29		sta $29				sta 	ZLTemp1+3
+.adb4	46 29		lsr $29				lsr 	3+ZLTemp1
+.adb6	66 28		ror $28				ror 	2+ZLTemp1
+.adb8	66 27		ror $27				ror 	1+ZLTemp1
+.adba	66 26		ror $26				ror 	0+ZLTemp1
+.adbc	46 29		lsr $29				lsr 	3+ZLTemp1
+.adbe	66 28		ror $28				ror 	2+ZLTemp1
+.adc0	66 27		ror $27				ror 	1+ZLTemp1
+.adc2	66 26		ror $26				ror 	0+ZLTemp1
+.adc4	18		clc				clc
+.adc5	b5 10		lda $10,x			lda 	A_Mantissa+0,x
+.adc7	65 26		adc $26				adc 	ZLTemp1+0
+.adc9	95 10		sta $10,x			sta 	A_Mantissa+0,x
+.adcb	b5 11		lda $11,x			lda 	A_Mantissa+1,x
+.adcd	65 27		adc $27				adc 	ZLTemp1+1
+.adcf	95 11		sta $11,x			sta 	A_Mantissa+1,x
+.add1	b5 12		lda $12,x			lda 	A_Mantissa+2,x
+.add3	65 28		adc $28				adc 	ZLTemp1+2
+.add5	95 12		sta $12,x			sta 	A_Mantissa+2,x
+.add7	b5 13		lda $13,x			lda 	A_Mantissa+3,x
+.add9	65 29		adc $29				adc 	ZLTemp1+3
+.addb	95 13		sta $13,x			sta 	A_Mantissa+3,x
+.addd	90 0a		bcc $ade9			bcc 	_FPUTimes10
+.addf	76 13		ror $13,x			ror 	3+A_Mantissa,x
+.ade1	76 12		ror $12,x			ror 	2+A_Mantissa,x
+.ade3	76 11		ror $11,x			ror 	1+A_Mantissa,x
+.ade5	76 10		ror $10,x			ror 	0+A_Mantissa,x
+.ade7	f6 14		inc $14,x			inc 	A_Exponent,x				; fix exponent
+.ade9					_FPUTimes10:
+.ade9	b5 14		lda $14,x			lda 	A_Exponent,x 				; fix up x 2^3
+.adeb	18		clc				clc
+.adec	69 03		adc #$03			adc 	#3
+.adee	95 14		sta $14,x			sta 	A_Exponent,x
+.adf0	70 97		bvs $ad89			bvs 	FP_Overflow 				; error
+.adf2	60		rts				rts
+.adf3					FPUNormaliseX:
+.adf3	48		pha				pha
+.adf4	b5 16		lda $16,x			lda 	A_Zero,x 					; if float-zero, don't need to normalise it.
+.adf6	d0 16		bne $ae0e			bne 	_FPUNExit
+.adf8					_FPULoop:
+.adf8	b5 13		lda $13,x			lda 	A_Mantissa+3,x 				; bit 31 of mantissa set.
+.adfa	30 12		bmi $ae0e			bmi 	_FPUNExit 					; if so, we are normalised.
+.adfc	16 10		asl $10,x			asl 	0+A_Mantissa+0,x
+.adfe	36 11		rol $11,x			rol 	1+A_Mantissa+0,x
+.ae00	36 12		rol $12,x			rol 	2+A_Mantissa+0,x
+.ae02	36 13		rol $13,x			rol 	3+A_Mantissa+0,x
+.ae04	d6 14		dec $14,x			dec 	A_Exponent,x 				; decrement exponent
+.ae06	b5 14		lda $14,x			lda 	A_Exponent,x 				; if exponent not $7F (e.g. gone < -$80)
+.ae08	c9 7f		cmp #$7f			cmp 	#$7F
+.ae0a	d0 ec		bne $adf8			bne 	_FPULoop
+.ae0c	d6 16		dec $16,x			dec 	A_Zero,x 					; the result is now zero.
+.ae0e					_FPUNExit:
+.ae0e	68		pla				pla
+.ae0f	60		rts				rts
+.ae10					FPUIntegerNegateX:
+.ae10	48		pha				pha
+.ae11	38		sec				sec
+.ae12	a9 00		lda #$00			lda 	#0
+.ae14	f5 10		sbc $10,x			sbc 	A_Mantissa+0,x
+.ae16	95 10		sta $10,x			sta 	A_Mantissa+0,x
+.ae18	a9 00		lda #$00			lda 	#0
+.ae1a	f5 11		sbc $11,x			sbc 	A_Mantissa+1,x
+.ae1c	95 11		sta $11,x			sta 	A_Mantissa+1,x
+.ae1e	a9 00		lda #$00			lda 	#0
+.ae20	f5 12		sbc $12,x			sbc 	A_Mantissa+2,x
+.ae22	95 12		sta $12,x			sta 	A_Mantissa+2,x
+.ae24	a9 00		lda #$00			lda 	#0
+.ae26	f5 13		sbc $13,x			sbc 	A_Mantissa+3,x
+.ae28	95 13		sta $13,x			sta 	A_Mantissa+3,X
+.ae2a	68		pla				pla
+.ae2b	60		rts				rts
+.ae2c					FPCompare:
+.ae2c	a5 14		lda $14				lda 	A_Exponent 					; save the exponents on the stack
+.ae2e	48		pha				pha
+.ae2f	a5 1c		lda $1c				lda 	B_Exponent
+.ae31	48		pha				pha
+.ae32	20 70 ae	jsr $ae70			jsr 	FPSubtract 					; calculate A-B
+.ae35	a5 16		lda $16				lda 	A_Zero 						; is the result zero ?
+.ae37	d0 32		bne $ae6b			bne 	_FPCPullZero 				; if so, then return zero throwing saved exp
+.ae39	68		pla				pla
+.ae3a	85 18		sta $18				sta 	B_Mantissa 					; BM+0 is BX
+.ae3c	68		pla				pla
+.ae3d	85 19		sta $19				sta 	B_Mantissa+1 				; BM+1 is AX
+.ae3f	38		sec				sec
+.ae40	e5 18		sbc $18				sbc 	B_Mantissa 					; AX-BX
+.ae42	70 1f		bvs $ae63			bvs 	_FPCNotEqual				; overflow, can't be equal.
+.ae44	1a		inc a				inc 	a 							; map -1,0,1 to 0,1,2
+.ae45	c9 03		cmp #$03			cmp 	#3 							; if >= 3 e.g. abs difference > 1
+.ae47	b0 1a		bcs $ae63			bcs 	_FPCNotEqual
+.ae49	18		clc				clc
+.ae4a	a5 18		lda $18				lda 	B_Mantissa 					; mean of exponents
+.ae4c	65 19		adc $19				adc 	B_Mantissa+1
+.ae4e	6a		ror a				ror 	a 							; shift carry out back in.
+.ae4f	38		sec				sec
+.ae50	e9 0c		sbc #$0c			sbc 	#12 						; allow for 2^12 error, relatively, about 4 DP ish.
+.ae52	50 02		bvc $ae56			bvc 	_FPCNotRange 				; keep in range.
+.ae54	a9 80		lda #$80			lda 	#$80
+.ae56					_FPCNotRange:
+.ae56	38		sec				sec
+.ae57	e5 14		sbc $14				sbc 	A_Exponent  				; if exponent of difference more than this.
+.ae59	50 02		bvc $ae5d			bvc 	_FPCNotOverflow 			; signed comparison
+.ae5b	49 80		eor #$80			eor 	#$80
+.ae5d					_FPCNotOverflow:
+.ae5d	30 04		bmi $ae63			bmi 	_FPCNotEqual 				; then error is too large, so return -1 or 1
+.ae5f	a9 00		lda #$00			lda 	#0 							; "approximately equal" allowing for rounding
+.ae61	80 0c		bra $ae6f			bra 	_FPCExit 					; errors.
+.ae63					_FPCNotEqual:
+.ae63	a5 15		lda $15				lda 	A_Sign 						; if sign is -ve , will be $FF, so return $FF
+.ae65	d0 08		bne $ae6f			bne 	_FPCExit
+.ae67	a9 01		lda #$01			lda 	#1 							; otherwise return $01 as not zero.
+.ae69	80 04		bra $ae6f			bra 	_FPCExit
+.ae6b					_FPCPullZero:
+.ae6b	68		pla				pla 								; throw saved exponents
+.ae6c	68		pla				pla
+.ae6d	a9 00		lda #$00			lda 	#0 							; and return zero
+.ae6f					_FPCExit:
+.ae6f	60		rts				rts
 
 ;******  Return to file: basic.asm
 
 
 ;******  Processing file: arithmetic/fpadd.asm
 
-.a55a					FPSubtract:
-.a55a	48		pha				pha
-.a55b	a5 1d		lda $1d				lda 	B_Sign 						; flip the sign of B and add
-.a55d	49 ff		eor #$ff			eor 	#$FF
-.a55f	85 1d		sta $1d				sta 	B_Sign
-.a561	68		pla				pla
-.a562					FPAdd:
-.a562	48		pha				pha
-.a563	da		phx				phx
-.a564	a5 15		lda $15				lda 	A_Sign 						; if A is -ve, specialised code
-.a566	d0 06		bne $a56e			bne 	_FPA_NegativeLHS
-.a568	20 86 a5	jsr $a586			jsr 	FPAdd_Worker 				; if +ve use standard worker unchanged.
-.a56b	fa		plx				plx
-.a56c	68		pla				pla
-.a56d	60		rts				rts
-.a56e					_FPA_NegativeLHS:
-.a56e	a5 15		lda $15				lda 	A_Sign 						; flip A and B signs
-.a570	49 ff		eor #$ff			eor 	#$FF
-.a572	85 15		sta $15				sta 	A_Sign
-.a574	a5 1d		lda $1d				lda 	B_Sign
-.a576	49 ff		eor #$ff			eor 	#$FF
-.a578	85 1d		sta $1d				sta 	B_Sign 						; so now it's A +- B
-.a57a	20 86 a5	jsr $a586			jsr 	FPAdd_Worker
-.a57d	a5 15		lda $15				lda 	A_Sign 						; and flip the result sign
-.a57f	49 ff		eor #$ff			eor 	#$FF
-.a581	85 15		sta $15				sta 	A_Sign
-.a583	fa		plx				plx
-.a584	68		pla				pla
-.a585	60		rts				rts
-.a586					FPAdd_Worker:
-.a586	a5 1e		lda $1e				lda 	B_Zero 						; if B is zero (e.g. adding zero)
-.a588	d0 78		bne $a602			bne 	_FPAWExit 					; no change.
-.a58a	a5 16		lda $16				lda 	A_Zero 						; if A is zero (e.g. 0 + B)
-.a58c	d0 71		bne $a5ff			bne 	_FPAWReturnB 				; then return B.
-.a58e					_FPAWMakeSame:
-.a58e	a2 00		ldx #$00			ldx 	#0 							; shift offset, this is to shift A.
-.a590	a5 14		lda $14				lda 	A_Exponent 					; check if exponents are the same.
-.a592	38		sec				sec
-.a593	e5 1c		sbc $1c				sbc	 	B_Exponent
-.a595	f0 14		beq $a5ab			beq 	_FPAW_DoArithmetic 			; if they are,
-.a597	50 02		bvc $a59b			bvc 	_FPAWNoOverflow 			; make it a signed comparison.
-.a599	49 80		eor #$80			eor 	#$80
-.a59b					_FPAWNoOverflow:
-.a59b	30 02		bmi $a59f			bmi 	_FPAWShiftA 				; if eA < eB then shift A
-.a59d	a2 08		ldx #$08			ldx 	#B_Mantissa-A_Mantissa 		; if eA > eB then shift B
-.a59f					_FPAWShiftA:
-.a59f	f6 14		inc $14,x			inc 	A_Exponent,x 				; so shift exponent up.
-.a5a1	56 13		lsr $13,x			lsr 	3+A_Mantissa,x
-.a5a3	76 12		ror $12,x			ror 	2+A_Mantissa,x
-.a5a5	76 11		ror $11,x			ror 	1+A_Mantissa,x
-.a5a7	76 10		ror $10,x			ror 	0+A_Mantissa,x
-.a5a9	80 e3		bra $a58e			bra 	_FPAWMakeSame 				; keep going till exponents are the same.
-.a5ab					_FPAW_DoArithmetic:
-.a5ab	a5 1d		lda $1d				lda 	B_Sign 						; is it adding a negative to a positive
-.a5ad	d0 28		bne $a5d7			bne 	_FPAW_BNegative
-.a5af	18		clc				clc
-.a5b0	a5 10		lda $10				lda 	A_Mantissa+0
-.a5b2	65 18		adc $18				adc 	B_Mantissa+0
-.a5b4	85 10		sta $10				sta 	A_Mantissa+0
-.a5b6	a5 11		lda $11				lda 	A_Mantissa+1
-.a5b8	65 19		adc $19				adc 	B_Mantissa+1
-.a5ba	85 11		sta $11				sta 	A_Mantissa+1
-.a5bc	a5 12		lda $12				lda 	A_Mantissa+2
-.a5be	65 1a		adc $1a				adc 	B_Mantissa+2
-.a5c0	85 12		sta $12				sta 	A_Mantissa+2
-.a5c2	a5 13		lda $13				lda 	A_Mantissa+3
-.a5c4	65 1b		adc $1b				adc 	B_Mantissa+3
-.a5c6	85 13		sta $13				sta 	A_Mantissa+3
-.a5c8	90 38		bcc $a602			bcc 	_FPAWExit 					; no carry.
-.a5ca	e6 14		inc $14				inc 	A_Exponent 					; so shift exponent up.
-.a5cc	38		sec				sec
-.a5cd	66 13		ror $13				ror 	3+A_Mantissa
-.a5cf	66 12		ror $12				ror 	2+A_Mantissa
-.a5d1	66 11		ror $11				ror 	1+A_Mantissa
-.a5d3	66 10		ror $10				ror 	0+A_Mantissa
-.a5d5	80 2b		bra $a602			bra 	_FPAWExit
-.a5d7					_FPAW_BNegative:
-.a5d7	38		sec				sec
-.a5d8	a5 10		lda $10				lda 	A_Mantissa+0
-.a5da	e5 18		sbc $18				sbc 	B_Mantissa+0
-.a5dc	85 10		sta $10				sta 	A_Mantissa+0
-.a5de	a5 11		lda $11				lda 	A_Mantissa+1
-.a5e0	e5 19		sbc $19				sbc 	B_Mantissa+1
-.a5e2	85 11		sta $11				sta 	A_Mantissa+1
-.a5e4	a5 12		lda $12				lda 	A_Mantissa+2
-.a5e6	e5 1a		sbc $1a				sbc 	B_Mantissa+2
-.a5e8	85 12		sta $12				sta 	A_Mantissa+2
-.a5ea	a5 13		lda $13				lda 	A_Mantissa+3
-.a5ec	e5 1b		sbc $1b				sbc 	B_Mantissa+3
-.a5ee	85 13		sta $13				sta 	A_Mantissa+3
-.a5f0	b0 10		bcs $a602			bcs		_FPAWExit 					; no borrow.
-.a5f2	a2 00		ldx #$00			ldx 	#0  						; negate the mantissa
-.a5f4	20 fa a4	jsr $a4fa			jsr 	FPUIntegerNegateX
-.a5f7	a5 15		lda $15				lda 	A_Sign 						; flip result sign
-.a5f9	49 ff		eor #$ff			eor 	#$FF
-.a5fb	85 15		sta $15				sta 	A_Sign
-.a5fd	80 03		bra $a602			bra 	_FPAWExit
-.a5ff					_FPAWReturnB:
-.a5ff	20 f8 a3	jsr $a3f8			jsr 	FPUCopyBToA 				; copy B into A
-.a602					_FPAWExit:
-.a602	a2 00		ldx #$00			ldx 	#0 							; normalise A
-.a604	20 dd a4	jsr $a4dd			jsr 	FPUNormaliseX
-.a607	60		rts				rts
+.ae70					FPSubtract:
+.ae70	48		pha				pha
+.ae71	a5 1d		lda $1d				lda 	B_Sign 						; flip the sign of B and add
+.ae73	49 ff		eor #$ff			eor 	#$FF
+.ae75	85 1d		sta $1d				sta 	B_Sign
+.ae77	68		pla				pla
+.ae78					FPAdd:
+.ae78	48		pha				pha
+.ae79	da		phx				phx
+.ae7a	a5 15		lda $15				lda 	A_Sign 						; if A is -ve, specialised code
+.ae7c	d0 06		bne $ae84			bne 	_FPA_NegativeLHS
+.ae7e	20 9c ae	jsr $ae9c			jsr 	FPAdd_Worker 				; if +ve use standard worker unchanged.
+.ae81	fa		plx				plx
+.ae82	68		pla				pla
+.ae83	60		rts				rts
+.ae84					_FPA_NegativeLHS:
+.ae84	a5 15		lda $15				lda 	A_Sign 						; flip A and B signs
+.ae86	49 ff		eor #$ff			eor 	#$FF
+.ae88	85 15		sta $15				sta 	A_Sign
+.ae8a	a5 1d		lda $1d				lda 	B_Sign
+.ae8c	49 ff		eor #$ff			eor 	#$FF
+.ae8e	85 1d		sta $1d				sta 	B_Sign 						; so now it's A +- B
+.ae90	20 9c ae	jsr $ae9c			jsr 	FPAdd_Worker
+.ae93	a5 15		lda $15				lda 	A_Sign 						; and flip the result sign
+.ae95	49 ff		eor #$ff			eor 	#$FF
+.ae97	85 15		sta $15				sta 	A_Sign
+.ae99	fa		plx				plx
+.ae9a	68		pla				pla
+.ae9b	60		rts				rts
+.ae9c					FPAdd_Worker:
+.ae9c	a5 1e		lda $1e				lda 	B_Zero 						; if B is zero (e.g. adding zero)
+.ae9e	d0 78		bne $af18			bne 	_FPAWExit 					; no change.
+.aea0	a5 16		lda $16				lda 	A_Zero 						; if A is zero (e.g. 0 + B)
+.aea2	d0 71		bne $af15			bne 	_FPAWReturnB 				; then return B.
+.aea4					_FPAWMakeSame:
+.aea4	a2 00		ldx #$00			ldx 	#0 							; shift offset, this is to shift A.
+.aea6	a5 14		lda $14				lda 	A_Exponent 					; check if exponents are the same.
+.aea8	38		sec				sec
+.aea9	e5 1c		sbc $1c				sbc	 	B_Exponent
+.aeab	f0 14		beq $aec1			beq 	_FPAW_DoArithmetic 			; if they are,
+.aead	50 02		bvc $aeb1			bvc 	_FPAWNoOverflow 			; make it a signed comparison.
+.aeaf	49 80		eor #$80			eor 	#$80
+.aeb1					_FPAWNoOverflow:
+.aeb1	30 02		bmi $aeb5			bmi 	_FPAWShiftA 				; if eA < eB then shift A
+.aeb3	a2 08		ldx #$08			ldx 	#B_Mantissa-A_Mantissa 		; if eA > eB then shift B
+.aeb5					_FPAWShiftA:
+.aeb5	f6 14		inc $14,x			inc 	A_Exponent,x 				; so shift exponent up.
+.aeb7	56 13		lsr $13,x			lsr 	3+A_Mantissa,x
+.aeb9	76 12		ror $12,x			ror 	2+A_Mantissa,x
+.aebb	76 11		ror $11,x			ror 	1+A_Mantissa,x
+.aebd	76 10		ror $10,x			ror 	0+A_Mantissa,x
+.aebf	80 e3		bra $aea4			bra 	_FPAWMakeSame 				; keep going till exponents are the same.
+.aec1					_FPAW_DoArithmetic:
+.aec1	a5 1d		lda $1d				lda 	B_Sign 						; is it adding a negative to a positive
+.aec3	d0 28		bne $aeed			bne 	_FPAW_BNegative
+.aec5	18		clc				clc
+.aec6	a5 10		lda $10				lda 	A_Mantissa+0
+.aec8	65 18		adc $18				adc 	B_Mantissa+0
+.aeca	85 10		sta $10				sta 	A_Mantissa+0
+.aecc	a5 11		lda $11				lda 	A_Mantissa+1
+.aece	65 19		adc $19				adc 	B_Mantissa+1
+.aed0	85 11		sta $11				sta 	A_Mantissa+1
+.aed2	a5 12		lda $12				lda 	A_Mantissa+2
+.aed4	65 1a		adc $1a				adc 	B_Mantissa+2
+.aed6	85 12		sta $12				sta 	A_Mantissa+2
+.aed8	a5 13		lda $13				lda 	A_Mantissa+3
+.aeda	65 1b		adc $1b				adc 	B_Mantissa+3
+.aedc	85 13		sta $13				sta 	A_Mantissa+3
+.aede	90 38		bcc $af18			bcc 	_FPAWExit 					; no carry.
+.aee0	e6 14		inc $14				inc 	A_Exponent 					; so shift exponent up.
+.aee2	38		sec				sec
+.aee3	66 13		ror $13				ror 	3+A_Mantissa
+.aee5	66 12		ror $12				ror 	2+A_Mantissa
+.aee7	66 11		ror $11				ror 	1+A_Mantissa
+.aee9	66 10		ror $10				ror 	0+A_Mantissa
+.aeeb	80 2b		bra $af18			bra 	_FPAWExit
+.aeed					_FPAW_BNegative:
+.aeed	38		sec				sec
+.aeee	a5 10		lda $10				lda 	A_Mantissa+0
+.aef0	e5 18		sbc $18				sbc 	B_Mantissa+0
+.aef2	85 10		sta $10				sta 	A_Mantissa+0
+.aef4	a5 11		lda $11				lda 	A_Mantissa+1
+.aef6	e5 19		sbc $19				sbc 	B_Mantissa+1
+.aef8	85 11		sta $11				sta 	A_Mantissa+1
+.aefa	a5 12		lda $12				lda 	A_Mantissa+2
+.aefc	e5 1a		sbc $1a				sbc 	B_Mantissa+2
+.aefe	85 12		sta $12				sta 	A_Mantissa+2
+.af00	a5 13		lda $13				lda 	A_Mantissa+3
+.af02	e5 1b		sbc $1b				sbc 	B_Mantissa+3
+.af04	85 13		sta $13				sta 	A_Mantissa+3
+.af06	b0 10		bcs $af18			bcs		_FPAWExit 					; no borrow.
+.af08	a2 00		ldx #$00			ldx 	#0  						; negate the mantissa
+.af0a	20 10 ae	jsr $ae10			jsr 	FPUIntegerNegateX
+.af0d	a5 15		lda $15				lda 	A_Sign 						; flip result sign
+.af0f	49 ff		eor #$ff			eor 	#$FF
+.af11	85 15		sta $15				sta 	A_Sign
+.af13	80 03		bra $af18			bra 	_FPAWExit
+.af15					_FPAWReturnB:
+.af15	20 0e ad	jsr $ad0e			jsr 	FPUCopyBToA 				; copy B into A
+.af18					_FPAWExit:
+.af18	a2 00		ldx #$00			ldx 	#0 							; normalise A
+.af1a	20 f3 ad	jsr $adf3			jsr 	FPUNormaliseX
+.af1d	60		rts				rts
 
 ;******  Return to file: basic.asm
 
 
 ;******  Processing file: arithmetic/fpmultiply.asm
 
-.a608					FPMultiply:
-.a608	48		pha				pha
-.a609	da		phx				phx
-.a60a	a5 1e		lda $1e				lda		B_Zero 						; if B = 0, return B unchanged
-.a60c	d0 6e		bne $a67c			bne 	_FPM_ReturnB
-.a60e	a5 16		lda $16				lda 	A_Zero 						; if A = 0, return A
-.a610	d0 6d		bne $a67f			bne 	_FPM_Exit
-.a612	a5 14		lda $14				lda 	A_Exponent					; add their exponents
-.a614	18		clc				clc
-.a615	65 1c		adc $1c				adc 	B_Exponent
-.a617	85 14		sta $14				sta 	A_Exponent 					; exponent of result.
-.a619	10 05		bpl $a620			bpl 	_FPM_NoOverflow 			; error if -ve result and overflow.
-.a61b	50 03		bvc $a620			bvc 	_FPM_NoOverflow
-.a61d	4c 73 a4	jmp $a473			jmp 	FP_Overflow
-.a620					_FPM_NoOverflow:
-.a620	a9 00		lda #$00			lda 	#0
-.a622	85 26		sta $26				sta 	zLTemp1+0 					; clear the long temp which is upper word of
-.a624	85 27		sta $27				sta 	zLTemp1+1 					; long product. lower word is mantissa-A
-.a626	85 28		sta $28				sta 	zLTemp1+2 					; multiplicand is mantissa-B
-.a628	85 29		sta $29				sta 	zLTemp1+3
-.a62a	a2 20		ldx #$20			ldx 	#32							; X is loop counter
-.a62c					_FPM_Loop:
-.a62c	a5 10		lda $10				lda 	A_Mantissa					; check LSB of long product
-.a62e	29 01		and #$01			and 	#1
-.a630	18		clc				clc 								; clear carry for the long rotate.
-.a631	f0 19		beq $a64c			beq 	_FPM_NoAddition
-.a633	18		clc				clc
-.a634	a5 26		lda $26				lda 	zLTemp1+0
-.a636	65 18		adc $18				adc 	B_Mantissa+0
-.a638	85 26		sta $26				sta 	zLTemp1+0
-.a63a	a5 27		lda $27				lda 	zLTemp1+1
-.a63c	65 19		adc $19				adc 	B_Mantissa+1
-.a63e	85 27		sta $27				sta 	zLTemp1+1
-.a640	a5 28		lda $28				lda 	zLTemp1+2
-.a642	65 1a		adc $1a				adc 	B_Mantissa+2
-.a644	85 28		sta $28				sta 	zLTemp1+2
-.a646	a5 29		lda $29				lda 	zLTemp1+3
-.a648	65 1b		adc $1b				adc 	B_Mantissa+3
-.a64a	85 29		sta $29				sta 	zLTemp1+3
-.a64c					_FPM_NoAddition:
-.a64c	66 29		ror $29				ror 	3+zLTemp1
-.a64e	66 28		ror $28				ror 	2+zLTemp1
-.a650	66 27		ror $27				ror 	1+zLTemp1
-.a652	66 26		ror $26				ror 	0+zLTemp1
-.a654	66 13		ror $13				ror 	3+A_Mantissa
-.a656	66 12		ror $12				ror 	2+A_Mantissa
-.a658	66 11		ror $11				ror 	1+A_Mantissa
-.a65a	66 10		ror $10				ror 	0+A_Mantissa
-.a65c	ca		dex				dex
-.a65d	d0 cd		bne $a62c			bne 	_FPM_Loop 					; do this 32 times.
-.a65f	a5 26		lda $26				lda 	zLTemp1+0 					; copy the left product into Mantissa A.
-.a661	85 10		sta $10				sta 	A_Mantissa+0
-.a663	a5 27		lda $27				lda 	zLTemp1+1
-.a665	85 11		sta $11				sta 	A_Mantissa+1
-.a667	a5 28		lda $28				lda 	zLTemp1+2
-.a669	85 12		sta $12				sta 	A_Mantissa+2
-.a66b	a5 29		lda $29				lda 	zLTemp1+3
-.a66d	85 13		sta $13				sta 	A_Mantissa+3
-.a66f	a5 15		lda $15				lda 	A_Sign 						; sign is xor of signs
-.a671	45 1d		eor $1d				eor 	B_Sign
-.a673	85 15		sta $15				sta 	A_Sign
-.a675	a2 00		ldx #$00			ldx 	#0 							; normalise the result
-.a677	20 dd a4	jsr $a4dd			jsr 	FPUNormaliseX
-.a67a	80 03		bra $a67f			bra		_FPM_Exit
-.a67c					_FPM_ReturnB:
-.a67c	20 f8 a3	jsr $a3f8			jsr 	FPUCopyBToA
-.a67f					_FPM_Exit:
-.a67f	fa		plx				plx
-.a680	68		pla				pla
-.a681	60		rts				rts
+.af1e					FPMultiply:
+.af1e	48		pha				pha
+.af1f	da		phx				phx
+.af20	a5 1e		lda $1e				lda		B_Zero 						; if B = 0, return B unchanged
+.af22	d0 6e		bne $af92			bne 	_FPM_ReturnB
+.af24	a5 16		lda $16				lda 	A_Zero 						; if A = 0, return A
+.af26	d0 6d		bne $af95			bne 	_FPM_Exit
+.af28	a5 14		lda $14				lda 	A_Exponent					; add their exponents
+.af2a	18		clc				clc
+.af2b	65 1c		adc $1c				adc 	B_Exponent
+.af2d	85 14		sta $14				sta 	A_Exponent 					; exponent of result.
+.af2f	10 05		bpl $af36			bpl 	_FPM_NoOverflow 			; error if -ve result and overflow.
+.af31	50 03		bvc $af36			bvc 	_FPM_NoOverflow
+.af33	4c 89 ad	jmp $ad89			jmp 	FP_Overflow
+.af36					_FPM_NoOverflow:
+.af36	a9 00		lda #$00			lda 	#0
+.af38	85 26		sta $26				sta 	zLTemp1+0 					; clear the long temp which is upper word of
+.af3a	85 27		sta $27				sta 	zLTemp1+1 					; long product. lower word is mantissa-A
+.af3c	85 28		sta $28				sta 	zLTemp1+2 					; multiplicand is mantissa-B
+.af3e	85 29		sta $29				sta 	zLTemp1+3
+.af40	a2 20		ldx #$20			ldx 	#32							; X is loop counter
+.af42					_FPM_Loop:
+.af42	a5 10		lda $10				lda 	A_Mantissa					; check LSB of long product
+.af44	29 01		and #$01			and 	#1
+.af46	18		clc				clc 								; clear carry for the long rotate.
+.af47	f0 19		beq $af62			beq 	_FPM_NoAddition
+.af49	18		clc				clc
+.af4a	a5 26		lda $26				lda 	zLTemp1+0
+.af4c	65 18		adc $18				adc 	B_Mantissa+0
+.af4e	85 26		sta $26				sta 	zLTemp1+0
+.af50	a5 27		lda $27				lda 	zLTemp1+1
+.af52	65 19		adc $19				adc 	B_Mantissa+1
+.af54	85 27		sta $27				sta 	zLTemp1+1
+.af56	a5 28		lda $28				lda 	zLTemp1+2
+.af58	65 1a		adc $1a				adc 	B_Mantissa+2
+.af5a	85 28		sta $28				sta 	zLTemp1+2
+.af5c	a5 29		lda $29				lda 	zLTemp1+3
+.af5e	65 1b		adc $1b				adc 	B_Mantissa+3
+.af60	85 29		sta $29				sta 	zLTemp1+3
+.af62					_FPM_NoAddition:
+.af62	66 29		ror $29				ror 	3+zLTemp1
+.af64	66 28		ror $28				ror 	2+zLTemp1
+.af66	66 27		ror $27				ror 	1+zLTemp1
+.af68	66 26		ror $26				ror 	0+zLTemp1
+.af6a	66 13		ror $13				ror 	3+A_Mantissa
+.af6c	66 12		ror $12				ror 	2+A_Mantissa
+.af6e	66 11		ror $11				ror 	1+A_Mantissa
+.af70	66 10		ror $10				ror 	0+A_Mantissa
+.af72	ca		dex				dex
+.af73	d0 cd		bne $af42			bne 	_FPM_Loop 					; do this 32 times.
+.af75	a5 26		lda $26				lda 	zLTemp1+0 					; copy the left product into Mantissa A.
+.af77	85 10		sta $10				sta 	A_Mantissa+0
+.af79	a5 27		lda $27				lda 	zLTemp1+1
+.af7b	85 11		sta $11				sta 	A_Mantissa+1
+.af7d	a5 28		lda $28				lda 	zLTemp1+2
+.af7f	85 12		sta $12				sta 	A_Mantissa+2
+.af81	a5 29		lda $29				lda 	zLTemp1+3
+.af83	85 13		sta $13				sta 	A_Mantissa+3
+.af85	a5 15		lda $15				lda 	A_Sign 						; sign is xor of signs
+.af87	45 1d		eor $1d				eor 	B_Sign
+.af89	85 15		sta $15				sta 	A_Sign
+.af8b	a2 00		ldx #$00			ldx 	#0 							; normalise the result
+.af8d	20 f3 ad	jsr $adf3			jsr 	FPUNormaliseX
+.af90	80 03		bra $af95			bra		_FPM_Exit
+.af92					_FPM_ReturnB:
+.af92	20 0e ad	jsr $ad0e			jsr 	FPUCopyBToA
+.af95					_FPM_Exit:
+.af95	fa		plx				plx
+.af96	68		pla				pla
+.af97	60		rts				rts
 
 ;******  Return to file: basic.asm
 
 
 ;******  Processing file: arithmetic/fpdivide.asm
 
-.a682					FPD_IsDivZero:
-.a682	20 b9 a7	jsr $a7b9			jsr 		ERR_Handler
->a685	44 69 76 69 73 69 6f 6e				.text 		"Division by zero",0
->a68d	20 62 79 20 7a 65 72 6f 00
-.a696					FPDivide:
-.a696	48		pha				pha
-.a697	da		phx				phx
-.a698	a5 1e		lda $1e				lda 	B_Zero 						; check if division by zero
-.a69a	d0 e6		bne $a682			bne 	FPD_IsDivZero
-.a69c	a5 16		lda $16				lda 	A_Zero 						; if 0/X (X is not zero) return 0
-.a69e	d0 7d		bne $a71d			bne 	_FPD_Exit
-.a6a0	a5 14		lda $14				lda 	A_Exponent 					; calculate new exponent
-.a6a2	38		sec				sec
-.a6a3	e5 1c		sbc $1c				sbc 	B_Exponent
-.a6a5	10 05		bpl $a6ac			bpl 	_FPD_NoOverflow 			; check for overflow.
-.a6a7	50 03		bvc $a6ac			bvc 	_FPD_NoOverflow
-.a6a9					_FPD_Overflow:
-.a6a9	4c 73 a4	jmp $a473			jmp 	FP_Overflow
-.a6ac					_FPD_NoOverflow:
-.a6ac	18		clc				clc 	 							; x 2, overflow if -ve
-.a6ad	69 01		adc #$01			adc 	#1
-.a6af	70 f8		bvs $a6a9			bvs 	_FPD_Overflow
-.a6b1	85 14		sta $14				sta 	A_Exponent
-.a6b3	a9 00		lda #$00			lda 	#0 							; clear result (kept in zLTemp1)
-.a6b5	85 26		sta $26				sta 	zLTemp1+0
-.a6b7	85 27		sta $27				sta 	zLTemp1+1
-.a6b9	85 28		sta $28				sta 	zLTemp1+2
-.a6bb	85 29		sta $29				sta 	zLTemp1+3
-.a6bd	a2 20		ldx #$20			ldx 	#32 						; times round.
-.a6bf					_FPD_Loop:
-.a6bf	38		sec				sec 								; calculate A-B stacking result.
-.a6c0	a5 10		lda $10				lda 	A_Mantissa+0
-.a6c2	e5 18		sbc $18				sbc 	B_Mantissa+0
-.a6c4	48		pha				pha
-.a6c5	a5 11		lda $11				lda 	A_Mantissa+1
-.a6c7	e5 19		sbc $19				sbc 	B_Mantissa+1
-.a6c9	48		pha				pha
-.a6ca	a5 12		lda $12				lda 	A_Mantissa+2
-.a6cc	e5 1a		sbc $1a				sbc 	B_Mantissa+2
-.a6ce	48		pha				pha
-.a6cf	a5 13		lda $13				lda 	A_Mantissa+3
-.a6d1	e5 1b		sbc $1b				sbc 	B_Mantissa+3
-.a6d3	90 13		bcc $a6e8			bcc		_FPD_NoSubtract 			; if CC couldn't subtract
-.a6d5	85 13		sta $13				sta 	A_Mantissa+3 				; save results out to A
-.a6d7	68		pla				pla
-.a6d8	85 12		sta $12				sta 	A_Mantissa+2
-.a6da	68		pla				pla
-.a6db	85 11		sta $11				sta 	A_Mantissa+1
-.a6dd	68		pla				pla
-.a6de	85 10		sta $10				sta 	A_Mantissa+0
-.a6e0	a5 29		lda $29				lda 	zLTemp1+3 					; set high bit of result
-.a6e2	09 80		ora #$80			ora 	#$80
-.a6e4	85 29		sta $29				sta 	zLTemp1+3
-.a6e6	80 03		bra $a6eb			bra 	_FPD_Rotates
-.a6e8					_FPD_NoSubtract:
-.a6e8	68		pla				pla 								; throw away unwanted results
-.a6e9	68		pla				pla
-.a6ea	68		pla				pla
-.a6eb					_FPD_Rotates:
-.a6eb	46 1b		lsr $1b				lsr 	3+B_Mantissa
-.a6ed	66 1a		ror $1a				ror 	2+B_Mantissa
-.a6ef	66 19		ror $19				ror 	1+B_Mantissa
-.a6f1	66 18		ror $18				ror 	0+B_Mantissa
-.a6f3	06 26		asl $26				asl 	0+zLTemp1
-.a6f5	26 27		rol $27				rol 	1+zLTemp1
-.a6f7	26 28		rol $28				rol 	2+zLTemp1
-.a6f9	26 29		rol $29				rol 	3+zLTemp1
-.a6fb	90 02		bcc $a6ff			bcc 	_FPD_NoCarry
-.a6fd	e6 26		inc $26				inc 	zLTemp1 					; if rotated out, set LSB.
-.a6ff					_FPD_NoCarry:
-.a6ff	ca		dex				dex 								; do 32 times
-.a700	d0 bd		bne $a6bf			bne 	_FPD_Loop
-.a702	a5 26		lda $26				lda 	zLTemp1+0 					; copy the left product into Mantissa A.
-.a704	85 10		sta $10				sta 	A_Mantissa+0
-.a706	a5 27		lda $27				lda 	zLTemp1+1
-.a708	85 11		sta $11				sta 	A_Mantissa+1
-.a70a	a5 28		lda $28				lda 	zLTemp1+2
-.a70c	85 12		sta $12				sta 	A_Mantissa+2
-.a70e	a5 29		lda $29				lda 	zLTemp1+3
-.a710	85 13		sta $13				sta 	A_Mantissa+3
-.a712	a5 15		lda $15				lda 	A_Sign 						; sign is xor of signs
-.a714	45 1d		eor $1d				eor 	B_Sign
-.a716	85 15		sta $15				sta 	A_Sign
-.a718	a2 00		ldx #$00			ldx 	#0 							; normalise the result
-.a71a	20 dd a4	jsr $a4dd			jsr 	FPUNormaliseX
-.a71d					_FPD_Exit:
-.a71d	fa		plx				plx
-.a71e	68		pla				pla
-.a71f	60		rts				rts
+.af98					FPD_IsDivZero:
+.af98	20 15 b2	jsr $b215			jsr 		ERR_Handler
+>af9b	44 69 76 69 73 69 6f 6e				.text 		"Division by zero",0
+>afa3	20 62 79 20 7a 65 72 6f 00
+.afac					FPDivide:
+.afac	48		pha				pha
+.afad	da		phx				phx
+.afae	a5 1e		lda $1e				lda 	B_Zero 						; check if division by zero
+.afb0	d0 e6		bne $af98			bne 	FPD_IsDivZero
+.afb2	a5 16		lda $16				lda 	A_Zero 						; if 0/X (X is not zero) return 0
+.afb4	d0 7d		bne $b033			bne 	_FPD_Exit
+.afb6	a5 14		lda $14				lda 	A_Exponent 					; calculate new exponent
+.afb8	38		sec				sec
+.afb9	e5 1c		sbc $1c				sbc 	B_Exponent
+.afbb	10 05		bpl $afc2			bpl 	_FPD_NoOverflow 			; check for overflow.
+.afbd	50 03		bvc $afc2			bvc 	_FPD_NoOverflow
+.afbf					_FPD_Overflow:
+.afbf	4c 89 ad	jmp $ad89			jmp 	FP_Overflow
+.afc2					_FPD_NoOverflow:
+.afc2	18		clc				clc 	 							; x 2, overflow if -ve
+.afc3	69 01		adc #$01			adc 	#1
+.afc5	70 f8		bvs $afbf			bvs 	_FPD_Overflow
+.afc7	85 14		sta $14				sta 	A_Exponent
+.afc9	a9 00		lda #$00			lda 	#0 							; clear result (kept in zLTemp1)
+.afcb	85 26		sta $26				sta 	zLTemp1+0
+.afcd	85 27		sta $27				sta 	zLTemp1+1
+.afcf	85 28		sta $28				sta 	zLTemp1+2
+.afd1	85 29		sta $29				sta 	zLTemp1+3
+.afd3	a2 20		ldx #$20			ldx 	#32 						; times round.
+.afd5					_FPD_Loop:
+.afd5	38		sec				sec 								; calculate A-B stacking result.
+.afd6	a5 10		lda $10				lda 	A_Mantissa+0
+.afd8	e5 18		sbc $18				sbc 	B_Mantissa+0
+.afda	48		pha				pha
+.afdb	a5 11		lda $11				lda 	A_Mantissa+1
+.afdd	e5 19		sbc $19				sbc 	B_Mantissa+1
+.afdf	48		pha				pha
+.afe0	a5 12		lda $12				lda 	A_Mantissa+2
+.afe2	e5 1a		sbc $1a				sbc 	B_Mantissa+2
+.afe4	48		pha				pha
+.afe5	a5 13		lda $13				lda 	A_Mantissa+3
+.afe7	e5 1b		sbc $1b				sbc 	B_Mantissa+3
+.afe9	90 13		bcc $affe			bcc		_FPD_NoSubtract 			; if CC couldn't subtract
+.afeb	85 13		sta $13				sta 	A_Mantissa+3 				; save results out to A
+.afed	68		pla				pla
+.afee	85 12		sta $12				sta 	A_Mantissa+2
+.aff0	68		pla				pla
+.aff1	85 11		sta $11				sta 	A_Mantissa+1
+.aff3	68		pla				pla
+.aff4	85 10		sta $10				sta 	A_Mantissa+0
+.aff6	a5 29		lda $29				lda 	zLTemp1+3 					; set high bit of result
+.aff8	09 80		ora #$80			ora 	#$80
+.affa	85 29		sta $29				sta 	zLTemp1+3
+.affc	80 03		bra $b001			bra 	_FPD_Rotates
+.affe					_FPD_NoSubtract:
+.affe	68		pla				pla 								; throw away unwanted results
+.afff	68		pla				pla
+.b000	68		pla				pla
+.b001					_FPD_Rotates:
+.b001	46 1b		lsr $1b				lsr 	3+B_Mantissa
+.b003	66 1a		ror $1a				ror 	2+B_Mantissa
+.b005	66 19		ror $19				ror 	1+B_Mantissa
+.b007	66 18		ror $18				ror 	0+B_Mantissa
+.b009	06 26		asl $26				asl 	0+zLTemp1
+.b00b	26 27		rol $27				rol 	1+zLTemp1
+.b00d	26 28		rol $28				rol 	2+zLTemp1
+.b00f	26 29		rol $29				rol 	3+zLTemp1
+.b011	90 02		bcc $b015			bcc 	_FPD_NoCarry
+.b013	e6 26		inc $26				inc 	zLTemp1 					; if rotated out, set LSB.
+.b015					_FPD_NoCarry:
+.b015	ca		dex				dex 								; do 32 times
+.b016	d0 bd		bne $afd5			bne 	_FPD_Loop
+.b018	a5 26		lda $26				lda 	zLTemp1+0 					; copy the left product into Mantissa A.
+.b01a	85 10		sta $10				sta 	A_Mantissa+0
+.b01c	a5 27		lda $27				lda 	zLTemp1+1
+.b01e	85 11		sta $11				sta 	A_Mantissa+1
+.b020	a5 28		lda $28				lda 	zLTemp1+2
+.b022	85 12		sta $12				sta 	A_Mantissa+2
+.b024	a5 29		lda $29				lda 	zLTemp1+3
+.b026	85 13		sta $13				sta 	A_Mantissa+3
+.b028	a5 15		lda $15				lda 	A_Sign 						; sign is xor of signs
+.b02a	45 1d		eor $1d				eor 	B_Sign
+.b02c	85 15		sta $15				sta 	A_Sign
+.b02e	a2 00		ldx #$00			ldx 	#0 							; normalise the result
+.b030	20 f3 ad	jsr $adf3			jsr 	FPUNormaliseX
+.b033					_FPD_Exit:
+.b033	fa		plx				plx
+.b034	68		pla				pla
+.b035	60		rts				rts
 
 ;******  Return to file: basic.asm
 
 
 ;******  Processing file: arithmetic/fpparts.asm
 
-.a720					FPFractionalPart:
-.a720	a5 14		lda $14				lda 	A_Exponent 					; if exponent -ve then then unchanged
-.a722	38		sec				sec 								; this flag tells us to keep the fractional part
-.a723	10 0d		bpl $a732			bpl 	FPGetPart
-.a725	60		rts				rts
-.a726					FPIntegerPart:
-.a726	a5 14		lda $14				lda 	A_Exponent 					; if exponent -ve then the result is zero.
-.a728	18		clc				clc 								; this flag says keep the integer part.
-.a729	10 07		bpl $a732			bpl 	FPGetPart
-.a72b	48		pha				pha
-.a72c	a9 ff		lda #$ff			lda 	#$FF 						; set the Zero Flag
-.a72e	85 16		sta $16				sta 	A_Zero
-.a730	68		pla				pla
-.a731	60		rts				rts
-.a732					FPGetPart:
-.a732	48		pha				pha
-.a733	da		phx				phx 								; save X
-.a734	a5 16		lda $16				lda 	A_Zero 						; if zero, return zero
-.a736	d0 4d		bne $a785			bne 	_FPGP_Exit 					; then do nothing.
-.a738	08		php				php 								; save the action flag on the stack.
-.a739	a9 ff		lda #$ff			lda 	#$FF 						; set the mask long to -1
-.a73b	85 26		sta $26				sta 	zLTemp1+0
-.a73d	85 27		sta $27				sta 	zLTemp1+1
-.a73f	85 28		sta $28				sta 	zLTemp1+2
-.a741	85 29		sta $29				sta 	zLTemp1+3
-.a743	a6 14		ldx $14				ldx 	A_Exponent 					; the number of shifts.
-.a745	f0 11		beq $a758			beq 	_FPGP_NoShift 				; ... if any
-.a747	e0 20		cpx #$20			cpx 	#32
-.a749	90 02		bcc $a74d			bcc 	_FPGP_NotMax
-.a74b	a2 20		ldx #$20			ldx 	#32 						; max of 32.
-.a74d					_FPGP_NotMax:
-.a74d	46 29		lsr $29				lsr 	3+zLTemp1
-.a74f	66 28		ror $28				ror 	2+zLTemp1
-.a751	66 27		ror $27				ror 	1+zLTemp1
-.a753	66 26		ror $26				ror 	0+zLTemp1
-.a755	ca		dex				dex
-.a756	d0 f5		bne $a74d			bne 	_FPGP_NotMax
-.a758					_FPGP_NoShift:
-.a758	a2 03		ldx #$03			ldx 	#3 							; now mask each part in turn.
-.a75a					_FPGP_MaskLoop:
-.a75a	b5 26		lda $26,x			lda 	zlTemp1,x 					; get mask.
-.a75c	28		plp				plp 								; if CC we keep the top part, so we
-.a75d	08		php				php		 							; flip the mask.
-.a75e	b0 02		bcs $a762			bcs		_FPGP_NoFlip
-.a760	49 ff		eor #$ff			eor 	#$FF
-.a762					_FPGP_NoFlip:
-.a762	35 10		and $10,x			and 	A_Mantissa,x
-.a764	95 10		sta $10,x			sta 	A_Mantissa,x
-.a766	ca		dex				dex
-.a767	10 f1		bpl $a75a			bpl 	_FPGP_MaskLoop
-.a769	28		plp				plp 								; get action flag on the stack
-.a76a	90 04		bcc $a770			bcc 	_FPGP_NotFractional 		; if fractional part always return +ve.
-.a76c	a9 00		lda #$00			lda 	#0
-.a76e	85 15		sta $15				sta 	A_Sign
-.a770					_FPGP_NotFractional:
-.a770	a5 10		lda $10				lda 	A_Mantissa 							; check if \1 zero
-.a772	05 11		ora $11				ora 	A_Mantissa+1
-.a774	05 12		ora $12				ora 	A_Mantissa+2
-.a776	05 13		ora $13				ora 	A_Mantissa+3
-.a778	f0 07		beq $a781			beq 	_FPGP_Zero 					; if zero, return zero
-.a77a	a2 00		ldx #$00			ldx 	#0							; otherwise normalise
-.a77c	20 dd a4	jsr $a4dd			jsr 	FPUNormaliseX
-.a77f	80 04		bra $a785			bra 	_FPGP_Exit 					; and exit
-.a781					_FPGP_Zero:
-.a781	a9 ff		lda #$ff			lda 	#$FF 						; set zero flag
-.a783	85 16		sta $16				sta 	A_Zero
-.a785					_FPGP_Exit:
-.a785	fa		plx				plx
-.a786	68		pla				pla
-.a787	60		rts				rts
+.b036					FPFractionalPart:
+.b036	a5 14		lda $14				lda 	A_Exponent 					; if exponent -ve then then unchanged
+.b038	38		sec				sec 								; this flag tells us to keep the fractional part
+.b039	10 0d		bpl $b048			bpl 	FPGetPart
+.b03b	60		rts				rts
+.b03c					FPIntegerPart:
+.b03c	a5 14		lda $14				lda 	A_Exponent 					; if exponent -ve then the result is zero.
+.b03e	18		clc				clc 								; this flag says keep the integer part.
+.b03f	10 07		bpl $b048			bpl 	FPGetPart
+.b041	48		pha				pha
+.b042	a9 ff		lda #$ff			lda 	#$FF 						; set the Zero Flag
+.b044	85 16		sta $16				sta 	A_Zero
+.b046	68		pla				pla
+.b047	60		rts				rts
+.b048					FPGetPart:
+.b048	48		pha				pha
+.b049	da		phx				phx 								; save X
+.b04a	a5 16		lda $16				lda 	A_Zero 						; if zero, return zero
+.b04c	d0 4d		bne $b09b			bne 	_FPGP_Exit 					; then do nothing.
+.b04e	08		php				php 								; save the action flag on the stack.
+.b04f	a9 ff		lda #$ff			lda 	#$FF 						; set the mask long to -1
+.b051	85 26		sta $26				sta 	zLTemp1+0
+.b053	85 27		sta $27				sta 	zLTemp1+1
+.b055	85 28		sta $28				sta 	zLTemp1+2
+.b057	85 29		sta $29				sta 	zLTemp1+3
+.b059	a6 14		ldx $14				ldx 	A_Exponent 					; the number of shifts.
+.b05b	f0 11		beq $b06e			beq 	_FPGP_NoShift 				; ... if any
+.b05d	e0 20		cpx #$20			cpx 	#32
+.b05f	90 02		bcc $b063			bcc 	_FPGP_NotMax
+.b061	a2 20		ldx #$20			ldx 	#32 						; max of 32.
+.b063					_FPGP_NotMax:
+.b063	46 29		lsr $29				lsr 	3+zLTemp1
+.b065	66 28		ror $28				ror 	2+zLTemp1
+.b067	66 27		ror $27				ror 	1+zLTemp1
+.b069	66 26		ror $26				ror 	0+zLTemp1
+.b06b	ca		dex				dex
+.b06c	d0 f5		bne $b063			bne 	_FPGP_NotMax
+.b06e					_FPGP_NoShift:
+.b06e	a2 03		ldx #$03			ldx 	#3 							; now mask each part in turn.
+.b070					_FPGP_MaskLoop:
+.b070	b5 26		lda $26,x			lda 	zlTemp1,x 					; get mask.
+.b072	28		plp				plp 								; if CC we keep the top part, so we
+.b073	08		php				php		 							; flip the mask.
+.b074	b0 02		bcs $b078			bcs		_FPGP_NoFlip
+.b076	49 ff		eor #$ff			eor 	#$FF
+.b078					_FPGP_NoFlip:
+.b078	35 10		and $10,x			and 	A_Mantissa,x
+.b07a	95 10		sta $10,x			sta 	A_Mantissa,x
+.b07c	ca		dex				dex
+.b07d	10 f1		bpl $b070			bpl 	_FPGP_MaskLoop
+.b07f	28		plp				plp 								; get action flag on the stack
+.b080	90 04		bcc $b086			bcc 	_FPGP_NotFractional 		; if fractional part always return +ve.
+.b082	a9 00		lda #$00			lda 	#0
+.b084	85 15		sta $15				sta 	A_Sign
+.b086					_FPGP_NotFractional:
+.b086	a5 10		lda $10				lda 	A_Mantissa 							; check if \1 zero
+.b088	05 11		ora $11				ora 	A_Mantissa+1
+.b08a	05 12		ora $12				ora 	A_Mantissa+2
+.b08c	05 13		ora $13				ora 	A_Mantissa+3
+.b08e	f0 07		beq $b097			beq 	_FPGP_Zero 					; if zero, return zero
+.b090	a2 00		ldx #$00			ldx 	#0							; otherwise normalise
+.b092	20 f3 ad	jsr $adf3			jsr 	FPUNormaliseX
+.b095	80 04		bra $b09b			bra 	_FPGP_Exit 					; and exit
+.b097					_FPGP_Zero:
+.b097	a9 ff		lda #$ff			lda 	#$FF 						; set zero flag
+.b099	85 16		sta $16				sta 	A_Zero
+.b09b					_FPGP_Exit:
+.b09b	fa		plx				plx
+.b09c	68		pla				pla
+.b09d	60		rts				rts
 
 ;******  Return to file: basic.asm
 
-.a788					StartROM:
-.a788	a2 ff		ldx #$ff			ldx 		#$FF 					; empty stack
-.a78a	9a		txs				txs
-.a78b	20 00 a0	jsr $a000			jsr 		IF_Reset 				; reset external interface
-.a78e	20 4a a0	jsr $a04a			jsr 		IFT_ClearScreen
-.a791	a2 d3		ldx #$d3			ldx 		#211
-.a793	a0 00		ldy #$00			ldy 		#0
-.a795	20 d4 a3	jsr $a3d4			jsr 		FPUSetBFromXY
-.a798	a2 08		ldx #$08			ldx 		#B_Mantissa-A_Mantissa
-.a79a	20 06 a4	jsr $a406			jsr 		FPUToFloatX
-.a79d	20 f8 a3	jsr $a3f8			jsr 		FPUCopyBToA
-.a7a0	a2 64		ldx #$64			ldx 		#100
-.a7a2	a0 00		ldy #$00			ldy 		#0
-.a7a4	20 d4 a3	jsr $a3d4			jsr 		FPUSetBFromXY
-.a7a7	a2 08		ldx #$08			ldx 		#B_Mantissa-A_Mantissa
-.a7a9	20 06 a4	jsr $a406			jsr 		FPUToFloatX
-.a7ac	20 96 a6	jsr $a696			jsr 		FPDivide
-.a7af	20 ea a3	jsr $a3ea			jsr 		FPUCopyAToB
-.a7b2	e6 18		inc $18				inc 		B_Mantissa+0
-.a7b4	20 16 a5	jsr $a516			jsr 		FPCompare
-.a7b7	ea		nop				nop
->a7b8	5c						.byte 		$5C
-.a7b9					ERR_Handler:
-.a7b9	80 fe		bra $a7b9			bra 		ERR_Handler
-.a7bb					NMIHandler:
-.a7bb	40		rti				rti
->fffa	bb a7						.word		NMIHandler
->fffc	88 a7						.word 		StartROM
->fffe	4f a3						.word 		TIM_BreakVector
+
+;******  Processing file: arithmetic/fpfromstr.asm
+
+.b09e					FPAsciiToFloat:
+.b09e	da		phx				phx
+.b09f	5a		phy				phy
+.b0a0	a2 00		ldx #$00			ldx 	#0 							; set the initial value to integer to zero.
+.b0a2	a0 00		ldy #$00			ldy 	#0
+.b0a4	20 ea ac	jsr $acea			jsr 	FPUSetBFromXY
+.b0a7	a0 00		ldy #$00			ldy 	#0  						; get first character.
+.b0a9	b1 2a		lda ($2a),y			lda 	(zGenPtr),y
+.b0ab	49 2d		eor #$2d			eor 	#"-"
+.b0ad	d0 01		bne $b0b0			bne 	_FPANotMinus
+.b0af	c8		iny				iny									; skip over the minus
+.b0b0					_FPANotMinus:
+.b0b0	48		pha				pha 								; A is zero for minus, non-zero for plus.
+.b0b1	a2 ff		ldx #$ff			ldx 	#$FF 						; X counts the decimal places.
+.b0b3					_FPAGetNextBody:
+.b0b3	b1 2a		lda ($2a),y			lda 	(zGenPtr),y 				; get next character
+.b0b5	c9 2e		cmp #$2e			cmp 	#"."						; decimal place
+.b0b7	d0 09		bne $b0c2			bne 	_FPANotDecimal
+.b0b9	c8		iny				iny 								; skip decimal place.
+.b0ba	e0 00		cpx #$00			cpx 	#0 							; already in decimals ?
+.b0bc	10 34		bpl $b0f2			bpl 	_FPAError
+.b0be	a2 00		ldx #$00			ldx 	#0 							; start counting decimals.
+.b0c0	80 f1		bra $b0b3			bra 	_FPAGetNextBody
+.b0c2					_FPANotDecimal:
+.b0c2	c9 30		cmp #$30			cmp 	#"0"						; if out of range 0-9 exit this bit.
+.b0c4	90 30		bcc $b0f6			bcc 	_FPAEndConstantPart
+.b0c6	c9 3a		cmp #$3a			cmp 	#"9"+1
+.b0c8	b0 2c		bcs $b0f6			bcs 	_FPAEndConstantPart
+.b0ca	e0 00		cpx #$00			cpx 	#00 						; if X +ve, then bump decimals.
+.b0cc	30 01		bmi $b0cf			bmi 	_FPANotIndecimal
+.b0ce	e8		inx				inx
+.b0cf					_FPANotInDecimal:
+.b0cf	a5 1b		lda $1b				lda 	B_Mantissa+3 				; check for overflow.
+.b0d1	c9 0c		cmp #$0c			cmp 	#$0C 						; roughly $7F/10
+.b0d3	b0 1d		bcs $b0f2			bcs 	_FPAError
+.b0d5	b1 2a		lda ($2a),y			lda 	(zGenPtr),y 				; get the digit.
+.b0d7	48		pha				pha 								; save digit.
+.b0d8	c8		iny				iny 								; skip over it
+.b0d9	20 5f b1	jsr $b15f			jsr 	FPABTimes10Int 				; multiply B_Mantissa by 10.
+.b0dc	68		pla				pla
+.b0dd	29 0f		and #$0f			and 	#15 						; make 0-9
+.b0df	18		clc				clc
+.b0e0	65 18		adc $18				adc 	B_Mantissa
+.b0e2	85 18		sta $18				sta 	B_Mantissa
+.b0e4	90 cd		bcc $b0b3			bcc 	_FPAGetNextBody
+.b0e6	e6 19		inc $19				inc 	B_Mantissa+1
+.b0e8	d0 c9		bne $b0b3			bne 	_FPAGetNextBody
+.b0ea	e6 1a		inc $1a				inc 	B_Mantissa+2
+.b0ec	d0 c5		bne $b0b3			bne 	_FPAGetNextBody
+.b0ee	e6 1b		inc $1b				inc 	B_Mantissa+3
+.b0f0	80 c1		bra $b0b3			bra 	_FPAGetNextBody
+.b0f2					_FPAError:
+.b0f2	7a		ply				ply
+.b0f3	fa		plx				plx
+.b0f4	38		sec				sec
+.b0f5	60		rts				rts
+.b0f6					_FPAEndConstantPart:
+.b0f6	68		pla				pla 								; minus flag.
+.b0f7	d0 07		bne $b100			bne 	_FPANotNegative				; skip if +ve
+.b0f9	da		phx				phx
+.b0fa	a2 08		ldx #$08			ldx 	#B_Mantissa-A_Mantissa
+.b0fc	20 10 ae	jsr $ae10			jsr 	FPUIntegerNegateX
+.b0ff	fa		plx				plx
+.b100					_FPANotNegative:
+.b100	8a		txa				txa 								; negate X as we want to divide by 10^x
+.b101	49 ff		eor #$ff			eor 	#$FF
+.b103	1a		inc a				inc 	a
+.b104	aa		tax				tax
+.b105	b1 2a		lda ($2a),y			lda 	(zGenPtr),y 				; check for exponents
+.b107	c9 45		cmp #$45			cmp 	#"E"
+.b109	f0 05		beq $b110			beq 	_FPAExponent
+.b10b	c9 65		cmp #$65			cmp 	#"e"
+.b10d	d0 11		bne $b120			bne 	_FPANoExponent
+.b10f	c8		iny				iny
+.b110					_FPAExponent:
+.b110	da		phx				phx
+.b111	20 2b b1	jsr $b12b			jsr 	FPAGetExponent 				; get exponent.
+.b114	8a		txa				txa
+.b115	fa		plx				plx
+.b116	8e 00 03	stx $0300			stx 	TIM_PC 						; use this as a temporary as not running TIM.
+.b119	18		clc				clc
+.b11a	6d 00 03	adc $0300			adc 	TIM_PC 						; add to the exponent.
+.b11d	70 d3		bvs $b0f2			bvs 	_FPAError 					; overflow ?
+.b11f	aa		tax				tax
+.b120					_FPANoExponent:
+.b120	8a		txa				txa 								; if adjustment is zero, do nothing
+.b121	f0 03		beq $b126			beq 	_FPANoScaling
+.b123	20 93 b1	jsr $b193			jsr 	FPScaleBByATimes10
+.b126					_FPANoScaling:
+.b126	98		tya				tya 								; Y is the offset.
+.b127	7a		ply				ply
+.b128	fa		plx				plx
+.b129	18		clc				clc
+.b12a	60		rts				rts
+.b12b					FPAGetExponent:
+.b12b	b1 2a		lda ($2a),y			lda 	(zGenPtr),y 				; get maybe +- sign.
+.b12d	c9 2b		cmp #$2b			cmp 	#"+"
+.b12f	f0 0d		beq $b13e			beq 	_FPAGetExponentPreIY 		; if + skip and get
+.b131	c9 2d		cmp #$2d			cmp 	#"-"
+.b133	d0 0a		bne $b13f			bne 	_FPAGetExponent 			; if not -, get as is
+.b135	20 3e b1	jsr $b13e			jsr 	_FPAGetExponentPreIY 		; get value
+.b138	8a		txa				txa
+.b139	49 ff		eor #$ff			eor 	#$FF 						; negate it
+.b13b	1a		inc a				inc 	a
+.b13c	aa		tax				tax
+.b13d	60		rts				rts
+.b13e					_FPAGetExponentPreIY:
+.b13e	c8		iny				iny
+.b13f					_FPAGetExponent:
+.b13f	a2 00		ldx #$00			ldx 	#0 							; start at 0.
+.b141					_FPAGELoop:
+.b141	b1 2a		lda ($2a),y			lda 	(zGenPtr),y 				; check char in range.
+.b143	c9 30		cmp #$30			cmp 	#"0"
+.b145	90 17		bcc $b15e			bcc 	_FPAGEExit
+.b147	c9 3a		cmp #$3a			cmp 	#"9"+1
+.b149	b0 13		bcs $b15e			bcs 	_FPAGEExit
+.b14b	8e 00 03	stx $0300			stx 	TIM_PC
+.b14e	8a		txa				txa
+.b14f	0a		asl a				asl 	a 							; x2
+.b150	0a		asl a				asl 	a 							; x4
+.b151	6d 00 03	adc $0300			adc 	TIM_PC 						; x5
+.b154	0a		asl a				asl 	a 							; x10
+.b155	71 2a		adc ($2a),y			adc 	(zGenPtr),y 				; add digit and fix up.
+.b157	38		sec				sec
+.b158	e9 30		sbc #$30			sbc 	#"0"
+.b15a	aa		tax				tax 								; back in X.
+.b15b	c8		iny				iny 								; next character
+.b15c	d0 e3		bne $b141			bne 	_FPAGELoop
+.b15e					_FPAGEExit:
+.b15e	60		rts				rts
+.b15f					FPABTimes10Int:
+.b15f	20 8a b1	jsr $b18a			jsr 	_FPABTimes2 				; x 2
+.b162	a5 1b		lda $1b				lda 	B_Mantissa+3 				; save on stack.
+.b164	48		pha				pha
+.b165	a5 1a		lda $1a				lda 	B_Mantissa+2
+.b167	48		pha				pha
+.b168	a5 19		lda $19				lda 	B_Mantissa+1
+.b16a	48		pha				pha
+.b16b	a5 18		lda $18				lda 	B_Mantissa+0
+.b16d	48		pha				pha
+.b16e	20 8a b1	jsr $b18a			jsr 	_FPABTimes2 				; x 4
+.b171	20 8a b1	jsr $b18a			jsr 	_FPABTimes2 				; x 8
+.b174	18		clc				clc
+.b175	68		pla				pla 								; add x 2 on => x 10
+.b176	65 18		adc $18				adc 	B_Mantissa+0
+.b178	85 18		sta $18				sta 	B_Mantissa+0
+.b17a	68		pla				pla
+.b17b	65 19		adc $19				adc 	B_Mantissa+1
+.b17d	85 19		sta $19				sta 	B_Mantissa+1
+.b17f	68		pla				pla
+.b180	65 1a		adc $1a				adc 	B_Mantissa+2
+.b182	85 1a		sta $1a				sta 	B_Mantissa+2
+.b184	68		pla				pla
+.b185	65 1b		adc $1b				adc 	B_Mantissa+3
+.b187	85 1b		sta $1b				sta 	B_Mantissa+3
+.b189	60		rts				rts
+.b18a					_FPABTimes2:
+.b18a	06 18		asl $18				asl 	0+B_Mantissa
+.b18c	26 19		rol $19				rol 	1+B_Mantissa
+.b18e	26 1a		rol $1a				rol 	2+B_Mantissa
+.b190	26 1b		rol $1b				rol 	3+B_Mantissa
+.b192	60		rts				rts
+.b193					FPScaleBByATimes10:
+.b193	da		phx				phx
+.b194	5a		phy				phy
+.b195	a8		tay				tay
+.b196	a2 07		ldx #$07			ldx 	#7
+.b198					_FPSPush:
+.b198	b5 10		lda $10,x			lda 	A_Mantissa,x
+.b19a	48		pha				pha
+.b19b	ca		dex				dex
+.b19c	10 fa		bpl $b198			bpl 	_FPSPush
+.b19e	98		tya				tya
+.b19f	48		pha				pha 								; save scalar.
+.b1a0	20 0e ad	jsr $ad0e			jsr 	FPUCopyBtoA					; put B in A
+.b1a3	a2 01		ldx #$01			ldx		#1
+.b1a5	a0 00		ldy #$00			ldy 	#0
+.b1a7	20 ea ac	jsr $acea			jsr 	FPUSetBFromXY 				; set B to 1
+.b1aa	a2 08		ldx #$08			ldx 	#B_Mantissa-A_Mantissa
+.b1ac	20 1c ad	jsr $ad1c			jsr 	FPUToFloatX 				; set B to 1.0
+.b1af	a2 00		ldx #$00			ldx 	#0
+.b1b1	20 1c ad	jsr $ad1c			jsr 	FPUToFloatX 				; set A to float.
+.b1b4	68		pla				pla 								; count in A
+.b1b5	48		pha				pha
+.b1b6	10 03		bpl $b1bb			bpl 	_FPCountPos 				; |count| in Y
+.b1b8	49 ff		eor #$ff			eor 	#$FF
+.b1ba	1a		inc a				inc 	a
+.b1bb					_FPCountPos:
+.b1bb	a8		tay				tay
+.b1bc					_FPCreateScalar:
+.b1bc	a2 08		ldx #$08			ldx 	#B_Mantissa-A_Mantissa 		; multiply B by 10.
+.b1be	20 a4 ad	jsr $ada4			jsr 	FPUTimes10X
+.b1c1	20 f3 ad	jsr $adf3			jsr 	FPUNormaliseX
+.b1c4	88		dey				dey
+.b1c5	d0 f5		bne $b1bc			bne 	_FPCreateScalar
+.b1c7	68		pla				pla 								; get direction back
+.b1c8	30 05		bmi $b1cf			bmi 	_FPSDivide
+.b1ca	20 1e af	jsr $af1e			jsr 	FPMultiply
+.b1cd	80 03		bra $b1d2			bra 	_FPSExit
+.b1cf					_FPSDivide:
+.b1cf	20 ac af	jsr $afac			jsr 	FPDivide
+.b1d2					_FPSExit:
+.b1d2	20 00 ad	jsr $ad00			jsr 	FPUCopyAToB 				; result back in B
+.b1d5	a2 00		ldx #$00			ldx 	#0
+.b1d7					_FPSPull:
+.b1d7	68		pla				pla
+.b1d8	95 10		sta $10,x			sta 	A_Mantissa,x
+.b1da	e8		inx				inx
+.b1db	e0 08		cpx #$08			cpx 	#8
+.b1dd	d0 f8		bne $b1d7			bne 	_FPSPull
+.b1df	7a		ply				ply
+.b1e0	fa		plx				plx
+.b1e1	60		rts				rts
+
+;******  Return to file: basic.asm
+
+.b1e2					StartROM:
+.b1e2	a2 ff		ldx #$ff			ldx 		#$FF 					; empty stack
+.b1e4	9a		txs				txs
+.b1e5	20 92 a0	jsr $a092			jsr 		IF_Reset 				; reset external interface
+.b1e8	20 5a a9	jsr $a95a			jsr 		IFT_ClearScreen
+.b1eb	a2 16		ldx #$16			ldx 		#22
+.b1ed	a0 00		ldy #$00			ldy 		#0
+.b1ef	20 ea ac	jsr $acea			jsr 		FPUSetBFromXY
+.b1f2	20 0e ad	jsr $ad0e			jsr 		FPUCopyBToA
+.b1f5	a2 00		ldx #$00			ldx 		#0
+.b1f7	20 1c ad	jsr $ad1c			jsr 		FPUToFloatX
+.b1fa	a9 09		lda #$09			lda 		#toConvert & $FF
+.b1fc	85 2a		sta $2a				sta 		zGenPtr
+.b1fe	a9 b2		lda #$b2			lda 		#toConvert >> 8
+.b200	85 2b		sta $2b				sta 		zGenPtr+1
+.b202	20 9e b0	jsr $b09e			jsr 		FPAsciiToFloat 			; convert it.
+.b205	4c 7a ab	jmp $ab7a			jmp 		TIM_Start
+>b208	5c						.byte 		$5C
+.b209					toConvert:
+>b209	2d 2e 39 38 37 33 32 65				.text 		"-.98732e-23",0
+>b211	2d 32 33 00
+.b215					ERR_Handler:
+.b215	80 fe		bra $b215			bra 		ERR_Handler
+.b217					NMIHandler:
+.b217	40		rti				rti
+>fffa	17 b2						.word		NMIHandler
+>fffc	e2 b1						.word 		StartROM
+>fffe	62 ac						.word 		TIM_BreakVector
 
 ;******  End of listing

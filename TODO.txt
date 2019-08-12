@@ -1,9 +1,9 @@
 TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
-		rethink maybe 
-			string->float ; float->string 
-		run 'compiled FP' code as unit test.
+		rethink:
+			float->string 
+		revamp and run 'compiled FP' code as unit test.
 
 -	Write the expression evaluator
 - 	Write the basic executor and tokeniser and implement ASSERT.

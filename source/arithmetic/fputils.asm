@@ -165,26 +165,26 @@ FPUTimes10X:
 		lda 	A_Mantissa+0,x 				; copy mantissa to ZLTemp1
 		sta 	ZLTemp1+0
 		lda 	A_Mantissa+1,x
-		sta 	ZLTemp1+1,x
+		sta 	ZLTemp1+1
 		lda 	A_Mantissa+2,x
-		sta 	ZLTemp1+2,x
+		sta 	ZLTemp1+2
 		lda 	A_Mantissa+3,x
-		sta 	ZLTemp1+3,x
+		sta 	ZLTemp1+3
 		#lsr32 	ZLTemp1 					; divide by 4
 		#lsr32 	ZLTemp1
 		;
 		clc
 		lda 	A_Mantissa+0,x
-		adc 	ZLTemp1+0,x
+		adc 	ZLTemp1+0
 		sta 	A_Mantissa+0,x
 		lda 	A_Mantissa+1,x
-		adc 	ZLTemp1+1,x
+		adc 	ZLTemp1+1
 		sta 	A_Mantissa+1,x
 		lda 	A_Mantissa+2,x
-		adc 	ZLTemp1+2,x
+		adc 	ZLTemp1+2
 		sta 	A_Mantissa+2,x
 		lda 	A_Mantissa+3,x
-		adc 	ZLTemp1+3,x
+		adc 	ZLTemp1+3
 		sta 	A_Mantissa+3,x
 
 		bcc 	_FPUTimes10

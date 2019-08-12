@@ -66,89 +66,77 @@ class FloatX(Float):
 			return 0
 		return -1 if self.sign else 1 						# compare values.
 	#
+	#		Convert number string to float/int.
+	#
+	def convertFromString(self,s):
+		sign = -1 											# sign of value
+		if s[0] == '-': 									# work out sign.
+			sign = 1
+			s = s[1:]
+		self.decimals = -1									# count of DP.
+		self.setInteger(0)									# set result to zero
+		#
+		#		Convert the body
+		#
+		while (s[0] >= '0' and s[0] <= '9') or s[0] == '.':	# while in number
+			if s[0] >= '0' and s[0] <= '9':
+				assert (self.value >> 24) < 0x0C,"overflow"
+				self.value = self.value * 10				# multiply by 10
+				self.value += int(s[0])						# add digit value.
+				if self.decimals >= 0:						# bump dec count if past DP.
+					self.decimals += 1
+			else:
+				self.decimals = 0				
+			s = s[1:]
+		self.sign = sign 									# set the sign.
+		#
+		#		If self.decimals > 0 we need to divide by that many decimal places.
+		#
+		self.decimals = -self.decimals if self.decimals > 0 else 0
+		#
+		#		Look for exponents, which will change this.
+		#
+		if s[0].lower() == "e":								# exponents ?
+			s = s[1:]
+			countSign = 1									# direction ?
+			if s[0] == "+" or s[0] == "-":					# handle + or -
+				countSign = -1 if s[0] == "-" else 1 		# set direction.
+				s = s[1:]
+			countExp = 0
+			while s[0] >= '0' and s[0] <= '9':				# get exponent
+				countExp = countExp * 10 + int(s[0])
+				s = s[1:]
+				assert countExp < 120,"Exponent bad"
+			self.decimals = self.decimals + countExp * countSign
+		#
+		if self.decimals != 0:								# decimal adjustment required.
+			self.toFloat()									# we need fp work now.
+			fScalar = Float().setInteger(1).toFloat() 		# workout the divider/multiplier
+			for i in range(0,abs(self.decimals)):
+				fScalar.times10()
+			if self.decimals < 0:							# scale up or down.
+				self.divFloat(fScalar)
+			else:
+				self.mulFloat(fScalar)
+		return self
+	#
 	#		Convert float to string.
 	#
 	def convertToString(self):
 		assert self.type == Float.FLOAT 					# float in ?
-		#
-		if abs(self.exponent) > 26:							# exponent too large
-			displayExponent = 0 							# adjust it by mul/div by 10.
-			if self.exponent > 0:
-				while self.getFloatValue() >= 10.0:
-					displayExponent += 1
-					self.divFloat(Float().setInteger(10).toFloat())
-			else:
-				while self.getFloatValue() < 1.0:
-					self.mulFloat(Float().setInteger(10).toFloat())
-					displayExponent -= 1
-			return self.convertToString()+"e"+str(displayExponent)
-		#
-		s = "-" if self.sign else ""						# - sign if negative
-		ip = Float().copy(self).toInteger()					# get integer part
-		s  = s + str(abs(ip.getIntegerValue()))		
-		placeCount = 10-len(s)								# don't print silly things.
-		self.fractionalPart()
-		self.sign = 0x00 									# never show any signs.
-		if self.zero != 0:									# fractional zero, no decimals		
-			return s
-		#
-		s = s + "."											# add DP
-		while self.zero == 0x00 and placeCount > 0: 		# while not zero or silly place levels
-			self.mulFloat(Float().setInteger(10).toFloat())	# x 10 and add integer part.
-			s = s + str(Float().copy(self).toInteger().getIntegerValue())
-			self.fractionalPart()
-			placeCount -= 1
-		while s.endswith("0"):								# remove trailing zeros
-			s = s[:-1]
 		return s
-	#
-	#		Convert number string to float/int.
-	#
-	def convertFromString(self,s):
-		self.setInteger(0)
-		sign = 1 											# sign value.
-		if s.startswith("-"):								# handle -ve numbers.
-			sign = -1
-			s = s[1:]
-		#
-		while s != "" and s[0] >= '0' and s[0] <= '9':		# input first bit as an integer
-			self.value = self.value * 10 + int(s[0])
-			assert self.value < 0x100000000,"Overflow"
-			s = s[1:]
-		#
-		self.value = (self.value * sign) & 0xFFFFFFFF		# apply sign if provided
-		if s.startswith("."):								# decimal number.
-			s = s[1:]
-			self.toFloat() 									# make float
-			self.sign = 0									# and absolute
-			scalar = Float().setInteger(1).toFloat()
-			while s != "" and s[0] >= '0' and s[0] <= '9':
-				scalar.divFloat(Float().setInteger(10).toFloat())
-				f1 = Float().setInteger(int(s[0])).toFloat().mulFloat(scalar)
-				self.addFloat(f1)
-				s = s[1:]
-			self.sign = 0xFF if sign < 0 else 0x00			# restore signs
-		#
-		m = re.match("^[eE]([\-\+]?)(\d+)(.*)",s) 			# exponent format ?
-		if m is not None:
-			self.toFloat()
-			if m.group(1) == "-":
-				for i in range(0,int(m.group(2))):
-					c10 = Float().setInteger(10).toFloat()
-					self.divFloat(c10)
-			else:
-				for i in range(0,int(m.group(2))):
-					c10 = Float().setInteger(10).toFloat()
-					self.mulFloat(c10)
-		return self
 
 if __name__ == "__main__":
-	for s in ["0","-1.2","-2","31","42.4","0.000000021471","987654.321","1.44e-5"]:
-		print(s)
-		f = FloatX().convertFromString(s).toFloat()
-		f.integerPart()
+	for s in ["9999999.12",".8","1.3e9","0","-1.2","345678","-2e4","31","42.4","0.000000021471","987654.321","1.44e-5"]:
+		print(s,float(s))
+		f = FloatX().convertFromString(s+"!")
 		print(f.toString())
-		f = FloatX().convertFromString(s).toFloat()
-		f.fractionalPart()
+		f.toInteger()
 		print(f.toString())
 		print("=====================")
+
+#	for i in range(0,9):
+#		f = FloatX().setInteger(1).toFloat()
+#		f.value = i << 29
+#		f.exponent = 3
+#		print(i,f.toString())
