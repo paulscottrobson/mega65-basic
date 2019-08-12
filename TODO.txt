@@ -2,7 +2,7 @@ TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
 		rethink maybe 
-			= test ; string->float ; float->string 
+			string->float ; float->string 
 		run 'compiled FP' code as unit test.
 
 -	Write the expression evaluator
@@ -10,6 +10,7 @@ TODO
 
 Fixes
 =====
+-  	Experiment with the FPCompare code to check the error range for equality.
 - 	Proper insert/delete in line editing.
 - 	Add X to Monitor (warm start BASIC)
 - 	FP optimisations for 4510 extended.

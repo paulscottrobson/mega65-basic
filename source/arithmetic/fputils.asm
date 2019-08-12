@@ -33,6 +33,25 @@ _FPUSB1:sta 	B_Mantissa+2 				; these are the two ms bytes
 
 ; *******************************************************************************************
 ;
+;										Copy A to B
+;
+; *******************************************************************************************
+
+FPUCopyAToB:
+		pha 								; copy the 8 byte format across.
+		phx
+		ldx 	#7
+_FPUCopy2:
+		lda 	A_Mantissa,x
+		sta 	B_Mantissa,x
+		dex
+		bpl 	_FPUCopy2
+		plx
+		pla
+		rts
+
+; *******************************************************************************************
+;
 ;										Copy B to A
 ;
 ; *******************************************************************************************
@@ -228,3 +247,67 @@ FPUIntegerNegateX:
 		sta 	A_Mantissa+3,X
 		pla
 		rts
+
+; *******************************************************************************************
+;
+;					Compare A-B - returns -1,0,1 depending on difference.
+;
+;	This is an approximate comparison, so values where |a-b| < c will still return zero
+;	because of rounding errors. c is related to the scale of a and b, not a fixed
+; 	constant.
+;
+; *******************************************************************************************
+
+FPCompare:
+		lda 	A_Exponent 					; save the exponents on the stack
+		pha
+		lda 	B_Exponent 					
+		pha
+		;
+		jsr 	FPSubtract 					; calculate A-B
+		lda 	A_Zero 						; is the result zero ?
+		bne 	_FPCPullZero 				; if so, then return zero throwing saved exp
+		;
+		pla
+		sta 	B_Mantissa 					; BM+0 is BX
+		pla 	
+		sta 	B_Mantissa+1 				; BM+1 is AX
+		sec
+		sbc 	B_Mantissa 					; AX-BX
+		bvs 	_FPCNotEqual				; overflow, can't be equal.
+		;
+		inc 	a 							; map -1,0,1 to 0,1,2
+		cmp 	#3 							; if >= 3 e.g. abs difference > 1
+		bcs 	_FPCNotEqual
+		;
+		clc
+		lda 	B_Mantissa 					; mean of exponents
+		adc 	B_Mantissa+1
+		ror 	a 							; shift carry out back in.
+		;
+		sec
+		sbc 	#12 						; allow for 2^12 error, relatively, about 4 DP ish.
+		bvc 	_FPCNotRange 				; keep in range.
+		lda 	#$80
+_FPCNotRange:		
+		sec
+		sbc 	A_Exponent  				; if exponent of difference more than this.
+		bvc 	_FPCNotOverflow 			; signed comparison
+		eor 	#$80
+_FPCNotOverflow:		
+		bmi 	_FPCNotEqual 				; then error is too large, so return -1 or 1
+		lda 	#0 							; "approximately equal" allowing for rounding
+		bra 	_FPCExit 					; errors. 
+		;
+_FPCNotEqual:
+		lda 	A_Sign 						; if sign is -ve , will be $FF, so return $FF
+		bne 	_FPCExit
+		lda 	#1 							; otherwise return $01 as not zero.
+		bra 	_FPCExit
+_FPCPullZero:
+		pla 								; throw saved exponents
+		pla
+		lda 	#0 							; and return zero
+_FPCExit:		
+		rts
+

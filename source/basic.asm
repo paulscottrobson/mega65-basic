@@ -34,20 +34,22 @@ StartROM:
 		jsr 		IF_Reset 				; reset external interface
 		jsr 		IFT_ClearScreen
 
-		ldx 		#21
+		ldx 		#211
 		ldy 		#0
 		jsr 		FPUSetBFromXY
 		ldx 		#B_Mantissa-A_Mantissa
 		jsr 		FPUToFloatX
 		jsr 		FPUCopyBToA		
-		ldx 		#10
+		ldx 		#100
 		ldy 		#0
 		jsr 		FPUSetBFromXY
 		ldx 		#B_Mantissa-A_Mantissa
 		jsr 		FPUToFloatX
 		jsr 		FPDivide
-		jsr 		FPFractionalPart
-		;jsr 		FPIntegerPart
+		jsr 		FPUCopyAToB
+		inc 		B_Mantissa+0
+		jsr 		FPCompare
+		nop
 		.byte 		$5C
 
 ERR_Handler:

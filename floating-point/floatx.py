@@ -52,6 +52,20 @@ class FloatX(Float):
 			self.normalize()
 		return self
 	#
+	#		Compare two floats. Returns -1,0,1
+	#
+	def cmpFloat(self,float2):
+		exp = (self.exponent + float2.exponent)/2 - 12		# this degree of accuracy required.
+		diff = abs(self.exponent - float2.exponent) 		# difference of 2^ allowed
+		if exp < -0x7F: 									# bottom out.
+			exp = -0x7F
+		self.subFloat(float2)								# calculate difference.
+		if self.zero != 0:									# actually zero.
+			return 0
+		if self.exponent < exp and diff <= 1: 				# in range for 'nearly zero'
+			return 0
+		return -1 if self.sign else 1 						# compare values.
+	#
 	#		Convert float to string.
 	#
 	def convertToString(self):
@@ -127,19 +141,6 @@ class FloatX(Float):
 					c10 = Float().setInteger(10).toFloat()
 					self.mulFloat(c10)
 		return self
-	#
-	#		Equality test. subtract float, return TRUE if *nearly* equal.
-	#
-	def equalFloat(self,fp):
-		if self.zero != 0 and fp.zero != 0:					# Both zero
-			return True 
-		if abs(self.exponent-fp.exponent) > 1:				# Exponents should be the same +/- 1
-			return False
-		exp = self.exponent 								# remember one.
-		self.subFloat(fp)									# subtract it.
-		if self.zero != 0:									# is zero.
-			return True
-		return self.exponent + 12 < exp 					# difference < 2^-12
 
 if __name__ == "__main__":
 	for s in ["0","-1.2","-2","31","42.4","0.000000021471","987654.321","1.44e-5"]:

@@ -32,10 +32,13 @@ def calc(op,n1,n2):
 		return n1 * n2
 	if op == "/":
 		return n1 / n2
-	if op == "I":
-		return int(n1)
-	if op == "F":
-		return n1-int(n1)
+	if op == "~":
+		result = n1-n2				# very infrequently wrong answer as slightly different !
+		if abs(result) <= abs(n1+n2) / 2.0 / pow(2,13):
+			result = 0
+		else:
+			result = -1 if result < 0 else 1
+		return result
 	assert False
 
 def isOkay(op,n1,n2):
@@ -54,18 +57,20 @@ def strf(n):
 
 random.seed()
 seed = random.randint(0,999999)
+#seed = 653639
 random.seed(seed)
 print("Generating test using seed {0}".format(seed))
 src = ""
 count = 0
 for i in range(0,4000):
-	op = "+-*/FI"[random.randint(0,3)]					# select operation
+	op = "+-*/~"[random.randint(0,4)]					# select operation
 	n1 = create()										# first number
 	n2 = create()										# second number.
+	if random.randint(0,20) == 0:						# occasionally equal.
+		n2 = n1
 	if isOkay(op,n1,n2):
 		src += "L["+strf(n1)+"] C"						# first number -> B then -> A
-		if op != "F" and op != "I":						# second number, if needed.
-			src += " L["+strf(n2)+"]" 					# put into B
+		src += " L["+strf(n2)+"]" 						# put into B
 		src = src + " " + op 							# calculate result A = A op B or op(A)
 		src += " L["+strf(calc(op,n1,n2))+"]"			# into B
 		src += " = "									# check result.

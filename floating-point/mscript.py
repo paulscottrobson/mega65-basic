@@ -45,6 +45,9 @@ while script != "":
 		floatA.mulFloat(floatB)
 	elif cmd == "/":
 		floatA.divFloat(floatB)
+	elif cmd == "~":
+		result = floatA.cmpFloat(floatB)
+		floatA.setInteger(result).toFloat()
 	elif cmd == "F":
 		floatA.fractionalPart()
 	elif cmd == "I":
@@ -54,7 +57,7 @@ while script != "":
 	elif cmd == "Q":
 		script = ""
 	elif cmd == "=":
-		assert floatA.equalFloat(floatB),"Different...."
+		assert floatA.cmpFloat(floatB) == 0,"Different @ {0}".format(lineNumber)
 	else:
 		assert False,"Unknown "+cmd
 print("Script run successfully.")
