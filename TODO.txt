@@ -2,7 +2,7 @@ TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
 		rethink:
-			float->string 
+			float->string - code for exponent generation
 		revamp and run 'compiled FP' code as unit test.
 		
 - 	Code Review : Interface code, Floating Point code.

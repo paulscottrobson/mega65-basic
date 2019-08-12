@@ -30,7 +30,7 @@ class FloatX(Float):
 		mask = 0xFFFFFFFF >> self.exponent 					# strip mask.
 		self.value = self.value & (mask ^ 0xFFFFFFFF)		# mask out lower bits.
 		if self.value == 0:									# if fractional part zero, return zero
-			self.zero = 0
+			self.zero = 0xFF
 		else:
 			self.normalize()
 		return self
@@ -46,7 +46,7 @@ class FloatX(Float):
 		self.value &= mask						
 		#
 		if self.value == 0:									# if fractional part zero, return zero
-			self.zero = 0
+			self.zero = 0xFF
 		else:
 			self.sign = 0
 			self.normalize()
@@ -127,20 +127,54 @@ class FloatX(Float):
 	#		Convert float to string.
 	#
 	def convertToString(self):
-		assert self.type == Float.FLOAT 					# float in ?
+		if self.type == Float.INTEGER:						# integer value.
+			return str(self.value if (self.value & 0x80000000) == 0 else self.value-0x100000000)
+		if self.zero != 0:
+			return "0"
+		#
+		#	TODO: Exponent - shift to 0 ? - output the number - output the shift.
+		#
+		s = "-" if self.sign else ""						# start with sign
+		self.sign = 0 										# now unsigned.
+		#
+		s = s + str(Float().copy(self).toInteger().value)	# convert to body to integer.
+		self.fractionalPart() 								# get fractional part.
+		if self.zero == 0 and len(s) < 10:
+			s = s + "."
+			while self.zero == 0: 							# while more data and digits
+				self.times10() 								# x 10
+				digit = str(Float().copy(self).toInteger().value)# add integer part
+				s = s + digit 								# add digit
+				self.fractionalPart()						# get fractional part.
+			#
+			while s[-1] == "0":								# strip trailing digits.
+				s = s[:-1]
 		return s
 
 if __name__ == "__main__":
-	for s in ["12345678901",".8","1.3e9","0","-1.2","345678","-2e4","31","42.4","0.000000021471","987654.321","1.44e-5"]:
-		print(s,float(s))
-		f = FloatX().convertFromString(s+"!")
-		print(f.toString())
-		f.toInteger()
-		print(f.toString())
-		print("=====================")
+	#nlist = ["123456.604",".8","1.3e9","0","-1.2","-3456.78","-2e4","31","42.4","0.000000021471","987654.321","1.44e-5"]
+	#nlist = ["0.000000021471"]
+	#for s in nlist:
+	#	f = FloatX().convertFromString(s+"!")
+	#	print(s,float(s),f.toString())
+	#	print("-----> "+f.convertToString())
+	#	print("=====================")
+	random.seed(42)
+	for i in range(0,2000*1000):
+		if i % 10000 == 0:
+			print(i)
+		n1 = random.randint(-10000000,10000000)/1000
+		if random.randint(0,3) == 0:
+			n1 = n1 / 10000
+		if random.randint(0,5) == 0:
+			n1 = int(n1)
+		f = FloatX().convertFromString(str(n1)+"!")
+		s = f.convertToString()
+		#print("Us",s,"Python",n1,str(n1))
+		if n1 != 0:
+			error = abs(float(s)-n1)/abs(n1)		
+			allowed = 0.00001 if n1 != int(n1) else 0
+			assert error <= allowed,"{0} {1} {2}".format(s,n1,error)
 
-#	for i in range(0,9):
-#		f = FloatX().setInteger(1).toFloat()
-#		f.value = i << 29
-#		f.exponent = 3
-#		print(i,f.toString())
+		else:
+			assert s == "0"

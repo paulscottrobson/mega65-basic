@@ -104,6 +104,8 @@ class Float(object):
 			if self.exponent < -0x7F:						# if reached lowest exponent
 				self.zero = 0xFF 		 					# we now have zero.
 				return
+		if self.value == 0:
+			self.zero = 0xFF
 	#
 	#		Convert floating point to integer
 	#
