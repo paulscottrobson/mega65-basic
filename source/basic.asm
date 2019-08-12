@@ -48,7 +48,7 @@ StartROM:
 		sta 		zGenPtr+1
 		jsr 		FPAsciiToFloat 			; convert it.
 stop1:	bcs 		stop1		
-		;jmp 		TIM_Start
+		jmp 		TIM_Start
 		.byte 		$5C
 
 toConvert:

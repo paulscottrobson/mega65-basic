@@ -4,6 +4,7 @@
 ;		Name : 		tim.asm
 ;		Purpose :	TIM Machine Language Monitor
 ;		Date :		10th August 2019
+;		Reviewed : 	12th August 2019 		(Review#1)
 ;		Author : 	Paul Robson (paul@robsons.org.uk)
 ;
 ; *******************************************************************************************
@@ -16,17 +17,19 @@
 ; *******************************************************************************************
 
 TIM_Error:
+		jsr 	IFT_UpLine 					; go up one line.
 		lda 	#"?"						; ? prompt
 		bra 	TIM_ShowPrompt
 TIM_NewCommand:
 		lda 	#"."						; dot prompt
 TIM_ShowPrompt:		
-		jsr 	IFT_PrintCharacter	
+		jsr 	IFT_PrintCharacter			; display . or ? prompt.
 		jsr 	IFT_ReadLine	 			; get character, go to next line
-		jsr 	IFT_NewLine
-		stx 	zTemp1 						; save line read
+		jsr 	IFT_NewLine					; go to next line.
+		;
+		stx 	zTemp1 						; save line read address
 		sty 	zTemp1+1
-		ldy 	#1 							; get first character
+		ldy 	#1 							; get first character after the prompt.
 		lda 	(zTemp1),y
 		cmp 	#"R"						; show registers
 		beq 	TIM_ShowRegisters
@@ -34,11 +37,12 @@ TIM_ShowPrompt:
 		beq 	TIM_ShowMemory
 		cmp 	#"G"						; execute
 		beq 	TIM_Execute
-		cmp 	#":"						; load memory
+		cmp 	#":"						; load memory 
 		beq 	TIM_GoLoadMemory
 		cmp 	#";" 						; load registers
 		bne 	TIM_Error
 		jmp 	TIM_UpdateRegisters
+		;
 TIM_GoLoadMemory:
 		jmp 	TIM_LoadMemory
 
@@ -55,25 +59,26 @@ TIM_ShowMemory:
 		sta 	zTemp2
 		lda 	zTemp3+1
 		sta 	zTemp2+1
-		jsr 	TIM_GetHex 					; get a hex value out
-		bcc 	_TIMSM_Start 				; okay, display zTemp2 ... zTemp3
-		lda 	zTemp2 						; set zTemp2 => zTemp3 so just one line.
+		jsr 	TIM_GetHex 					; get a hex value out => zTemp3
+		;
+		bcc 	_TIMSM_Start 				; okay, display zTemp2 ... zTemp3 as value ok
+		lda 	zTemp2 						; single value set zTemp2 => zTemp3 so just one line.
 		sta 	zTemp3
 		lda 	zTemp2+1
 		sta 	zTemp3+1
 		;
 _TIMSM_Start:		
-		jsr 	TIM_WriteLine
-		lda 	zTemp2 						; bump ZTemp2
-		clc
+		jsr 	TIM_WriteLine 				; write one line of hex out
+		lda 	zTemp2 						; bump ZTemp2 by 16
+		clc									
 		adc 	#16
 		sta 	zTemp2
 		bcc 	_TIMSM_NoCarry
 		inc 	zTemp2+1
 _TIMSM_NoCarry:
 		jsr 	IF_CheckBreak 				; check CTL+C
-		bne 	_TIMSM_Ends
-		sec 								; check past.
+		bne 	_TIMSM_Ends 				; if pressed break out.
+		sec 								; check past the end address in zTemp3
 		lda 	zTemp3
 		sbc 	zTemp2
 		lda 	zTemp3+1
@@ -90,9 +95,9 @@ _TIMSM_Ends:
 
 TIM_Execute:	
 		jsr 	TIM_GetHex 					; get the execute address
-		bcs 	TIM_Error
-		nop
-		ldx 	TIM_SP 						; set up S
+		bcs 	TIM_Error 					; not legitimate
+		;
+		ldx 	TIM_SP 						; set up SP
 		txs
 		lda 	TIM_SR 						; Status for PLP
 		pha
@@ -111,10 +116,10 @@ TIM_Execute:
 ;
 ; *******************************************************************************************
 
-TIM_Start:
+TIM_Start: 									; entry point here (not using BRK)
 
 TIM_ShowRegisters:
-		lda 	$FFFE 						; copy IRQx
+		lda 	$FFFE 						; copy IRQx which is in ROM.
 		sta 	TIM_IRQ+1
 		lda 	$FFFF
 		sta 	TIM_IRQ
@@ -127,8 +132,8 @@ _TIMSR_Text:
 		bne 	_TIMSR_Text
 		ldx 	#0 							; output Register Line.
 _TIMSR_LoopSpace:
-		cpx 	#4
-		bcs 	_TIMSR_Space
+		cpx 	#4 							; this checks if we need a space to
+		bcs 	_TIMSR_Space 				; batten the 16 bit registers together.
 		txa
 		lsr 	a
 		bcs 	_TIMSR_NoSpace
@@ -141,11 +146,11 @@ _TIMSR_NoSpace:
 		inx 		
 		cpx 	#TIM_SP-TIM_PC+1
 		bne 	_TimSR_LoopSpace
-		jsr 	IFT_NewLine
-		jmp	 	TIM_NewCommand
+		jsr 	IFT_NewLine 				; new line
+		jmp	 	TIM_NewCommand 				; new command.
 
 _TIMSR_Label:
-		.text 	"TIM65 PC   IRQ  SR AC XR YR ZR SP",13,".;   "
+		.text 	"    PC   IRQ  SR AC XR YR ZR SP",13,".; "
 _TIMSR_LabelEnd:		
 
 ; *******************************************************************************************
@@ -155,22 +160,22 @@ _TIMSR_LabelEnd:
 ; *******************************************************************************************
 
 TIM_WriteHex:
-		pha
+		pha 								; save A
+		lsr 	a 							; shift MSB->LSB
 		lsr 	a
 		lsr 	a
 		lsr 	a
-		lsr 	a
-		jsr 	_TIMWH_Nibble
-		pla
+		jsr 	_TIMWH_Nibble 				; print MSB
+		pla 								; restore and print LSB
 _TIMWH_Nibble:		
 		pha
-		and 	#15
-		cmp 	#10
+		and 	#15 						; mask out
+		cmp 	#10 						; convert to ASCII
 		bcc 	_TIMWHNoLetter
 		adc 	#6
 _TIMWHNoLetter:
 		adc 	#48
-		jsr 	IFT_PrintCharacter
+		jsr 	IFT_PrintCharacter 			; print it out.
 		pla
 		rts		
 
@@ -181,15 +186,15 @@ _TIMWHNoLetter:
 ; *******************************************************************************************
 
 TIM_WriteLine:
-		lda 	#"."
+		lda 	#"." 						; prompt
 		jsr 	IFT_PrintCharacter
-		lda 	#":"
+		lda 	#":" 						; input line command so we can edit it
 		jsr 	IFT_PrintCharacter
-		lda 	zTemp2+1
+		lda 	zTemp2+1 					; write address
 		jsr 	TIM_WriteHex
 		lda 	zTemp2
 		jsr 	TIM_WriteHex
-		ldy 	#0
+		ldy 	#0							; write 16 bytes of data from (zTemp2)
 _TIMWL_Loop:		
 		lda 	#" "
 		jsr 	IFT_PrintCharacter
@@ -198,7 +203,7 @@ _TIMWL_Loop:
 		iny
 		cpy 	#16
 		bne 	_TIMWL_Loop
-		jmp 	IFT_NewLine
+		jmp 	IFT_NewLine 				; new line and exit
 
 ; *******************************************************************************************
 ;
@@ -211,6 +216,9 @@ TIM_GetHex:
 		lda 	(zTemp1),y 					; skip over spaces.
 		cmp 	#32
 		beq 	TIM_GetHex		
+		cmp 	#"," 						; skip over commas
+		beq 	TIM_GetHex
+		;
 		jsr 	TIM_GetHexCharacter 		; extract one hex character.
 		bcs 	_TIMGH_Exit					; if first bad then exit now.
 		lda 	#0 							; zero result
@@ -232,11 +240,14 @@ _TIM_GHLoop:
 		sta 	zTemp3
 		bra 	_TIM_GHLoop 				; loop round again.
 		;
-_TIMGH_Okay:
+_TIMGH_Okay: 								; exit with CC, so okay.
 		clc
 _TIMGH_Exit:		
 		rts
 
+;
+;		Get a single character from (zTemp1),y
+;
 TIM_GetHexCharacter:
 		lda 	(zTemp1),y
 		sec
@@ -265,14 +276,15 @@ TIM_BreakVector:
 		phx									; save X/A on stack
 		pha 								
 		tsx 								; X points to S
-		lda 	$0103,x 					; PSW saved on stack.
-		and 	#$10 						; check stacked B Flag
+		lda 	$0103,x 					; PSW saved on stack, this retrieves it
+		and 	#$10 						; check stacked B Flag - only set on the stacked reg
 		bne 	_TIMBreak					; if set, it's BRK
-		pla 								; abandon
+		pla 								; abandon routine.
 		plx
 		rti
+		;
 _TIMBreak:
-		pla
+		pla 								; save A X Y and maybe Z
 		sta 	TIM_A
 		plx
 		stx 	TIM_X
@@ -280,7 +292,7 @@ _TIMBreak:
 		.if 	CPU=4510 					; can we save Z ?
 		stz 	TIM_Z
 		.endif
-		pla 								; get P
+		pla 								; get Status Register
 		sta 	TIM_SR
 		pla
 		sta 	TIM_PC+1 					; save calling address
@@ -288,15 +300,17 @@ _TIMBreak:
 		sta 	TIM_PC 						; high byte
 		;
 		lda 	TIM_PC+1 					; dec PC to point right.
-		bne 	_TIMDecrement
+		bne 	_TIMDecrement 				; brk bumps it.
 		dec 	TIM_PC
 _TIMDecrement:		
 		dec 	TIM_PC+1
-		tsx
-		stx 	TIM_SP 						; and SP
+		tsx 								; and copy SP
+		stx 	TIM_SP 						
 		ldx 	#$FF 						; reset SP
 		txs
-		jmp 	TIM_Start
+		jmp 	TIM_Start 					; and start up TIM monitor.
+
+
 
 ; *******************************************************************************************
 ;

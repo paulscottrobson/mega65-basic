@@ -57,6 +57,22 @@ IFT_HomeCursor:
 
 ; *******************************************************************************************
 ;
+;										Up one line
+;
+; *******************************************************************************************
+
+IFT_UpLine:	
+		pha
+		lda  	IFT_YCursor 				; get Y
+		dec 	a 							; line above
+		bmi 	_IFTULExit 					; too far, abort
+		jsr 	IFT_SetYPos					; set to that line.
+_IFTULExit:
+		pla
+		rts
+
+; *******************************************************************************************
+;
 ;							Print Character on screen (ASCII in A)
 ;
 ; *******************************************************************************************
@@ -123,7 +139,7 @@ _IFT_SLoop:
 		cpx 	#IF_Height-1				; do whole screen
 		bne 	_IFT_SLoop
 		lda 	#IF_Height-1 				; move to X = 0,Y = A
-		jsr 	IF_SetYPos
+		jsr 	IFT_SetYPos
 		ldx 	#IF_Width 					; blank line
 _IFT_SBlank:
 		lda 	#32
@@ -132,7 +148,7 @@ _IFT_SBlank:
 		bne 	_IFT_SBlank
 		;
 		lda 	#IF_Height-1 				; move to X = 0,Y = A
-		jsr 	IF_SetYPos
+		jsr 	IFT_SetYPos
 		ply
 		plx
 		pla
@@ -143,7 +159,7 @@ _IFT_ScrollLine:
 		phx
 		txa 								; copy line into buffer.
 		inc 	a 							; next line down.
-		jsr 	IF_SetYPos
+		jsr 	IFT_SetYPos
 		ldx 	#0
 _IFTScrollCopy1:
 		jsr 	IF_Read
@@ -152,7 +168,7 @@ _IFTScrollCopy1:
 		cpx 	#IF_Width
 		bne 	_IFTScrollCopy1
 		pla
-		jsr 	IF_SetYPos
+		jsr 	IFT_SetYPos
 		ldx 	#0
 _IFTScrollCopy2:
 		lda 	IFT_Buffer,x
@@ -169,7 +185,7 @@ _IFTScrollCopy2:
 ;
 ; *******************************************************************************************
 
-IF_SetYPos:
+IFT_SetYPos:
 		pha
 		phx
 		tax
@@ -278,7 +294,7 @@ _IFT_Reposition:
 		lda 	IFT_XCursor 				; put cursor at xCursor,yCursor
 		pha
 		lda 	IFT_YCursor
-		jsr 	IF_SetYPos
+		jsr 	IFT_SetYPos
 		pla
 		tax
 		cpx 	#0
@@ -292,7 +308,7 @@ _IFT_MoveRight:
 		;		
 _IFT_RLExit:								; CR-Exit.
 		lda 	IFT_YCursor 				; go to start of line.
-		jsr 	IF_SetYPos
+		jsr 	IFT_SetYPos
 		ldx 	#0 							; read text into line.
 _IFT_RLRead:
 		jsr 	IF_Read
