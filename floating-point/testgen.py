@@ -14,14 +14,17 @@ import random
 def create():
 	n = random.randint(0,3)
 	if n == 0:
-		return random.randint(-3,3)
+		r = random.randint(-3,3)
 	if n == 1:
-		return random.randint(-20000,20000)/100
+		r = random.randint(-20000,20000)/100
 	if n == 2:
-		return random.randint(-20000000,20000000) / 1000
-	n = random.randint(-1000,1000)/100
-	pw = random.randint(-15,15)
-	return n * pow(10,pw)
+		r = random.randint(-200000,200000) / 1000
+	if n == 3:
+		n = random.randint(-1000,1000)/100
+		pw = random.randint(-15,15)
+		r = n * pow(10,pw)
+	s = "{0:8g}".format(r)
+	return float(s)
 
 def calc(op,n1,n2):
 	if op == "+":
@@ -53,11 +56,11 @@ def isOkay(op,n1,n2):
 def strf(n):
 	if abs(n) < 800000:
 		return str(n)
-	return "{0:6e}".format(n)
+	return "{:8e}".format(n)
 
 random.seed()
 seed = random.randint(0,999999)
-#seed = 653639
+#seed = 69932
 random.seed(seed)
 print("Generating test using seed {0}".format(seed))
 src = ""

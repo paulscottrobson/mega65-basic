@@ -47,11 +47,12 @@ StartROM:
 		lda 		#toConvert >> 8
 		sta 		zGenPtr+1
 		jsr 		FPAsciiToFloat 			; convert it.
-		jmp 		TIM_Start
+stop1:	bcs 		stop1		
+		;jmp 		TIM_Start
 		.byte 		$5C
 
 toConvert:
-		.text 		"-.98732e-23",0
+		.text 		"123456789",0
 
 ERR_Handler:
 		bra 		ERR_Handler

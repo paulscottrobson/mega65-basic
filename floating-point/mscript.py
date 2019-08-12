@@ -31,7 +31,7 @@ while script != "":
 	if cmd == "L":
 		m = re.match("^\\[(.*?)\\](.*)$",script)
 		assert m is not None,"<"+script+">"
-		floatB.convertFromString(m.group(1)).toFloat()
+		floatB.convertFromString(m.group(1)+"!").toFloat()
 		script = m.group(2)
 	elif cmd == "W":
 		print("Output : "+floatA.convertToString())
@@ -48,10 +48,6 @@ while script != "":
 	elif cmd == "~":
 		result = floatA.cmpFloat(floatB)
 		floatA.setInteger(result).toFloat()
-	elif cmd == "F":
-		floatA.fractionalPart()
-	elif cmd == "I":
-		floatA.integerPart()
 	elif cmd == "%":
 		lineNumber += 1
 	elif cmd == "Q":

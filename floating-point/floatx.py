@@ -69,9 +69,9 @@ class FloatX(Float):
 	#		Convert number string to float/int.
 	#
 	def convertFromString(self,s):
-		sign = -1 											# sign of value
+		sign = 1 											# sign of value
 		if s[0] == '-': 									# work out sign.
-			sign = 1
+			sign = -1
 			s = s[1:]
 		self.decimals = -1									# count of DP.
 		self.setInteger(0)									# set result to zero
@@ -80,15 +80,19 @@ class FloatX(Float):
 		#
 		while (s[0] >= '0' and s[0] <= '9') or s[0] == '.':	# while in number
 			if s[0] >= '0' and s[0] <= '9':
-				assert (self.value >> 24) < 0x0C,"overflow"
-				self.value = self.value * 10				# multiply by 10
-				self.value += int(s[0])						# add digit value.
-				if self.decimals >= 0:						# bump dec count if past DP.
-					self.decimals += 1
+				if (self.value >> 24) < 0x0C:
+					self.value = self.value * 10			# multiply by 10
+					self.value += int(s[0])					# add digit value.
+					if self.decimals >= 0:					# bump dec count if past DP.
+						self.decimals += 1
+				else:
+					if self.decimals < 0: 					# cannot throw non-decimals
+						assert False,"Overflow"
 			else:
 				self.decimals = 0				
 			s = s[1:]
-		self.sign = sign 									# set the sign.
+		if sign < 0:
+			self.value = (-self.value) & 0xFFFFFFFF
 		#
 		#		If self.decimals > 0 we need to divide by that many decimal places.
 		#
@@ -127,7 +131,7 @@ class FloatX(Float):
 		return s
 
 if __name__ == "__main__":
-	for s in ["9999999.12",".8","1.3e9","0","-1.2","345678","-2e4","31","42.4","0.000000021471","987654.321","1.44e-5"]:
+	for s in ["12345678901",".8","1.3e9","0","-1.2","345678","-2e4","31","42.4","0.000000021471","987654.321","1.44e-5"]:
 		print(s,float(s))
 		f = FloatX().convertFromString(s+"!")
 		print(f.toString())
