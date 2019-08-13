@@ -2,7 +2,7 @@ TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
 		implement:
-			float->string
+			float->string (exponent code)
 		
 - 	Code Review : Interface code, Floating Point code.
 -	Write the expression evaluator

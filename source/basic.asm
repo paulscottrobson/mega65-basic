@@ -28,6 +28,8 @@
 		.include 	"arithmetic/fpdivide.asm"
 		.include 	"arithmetic/fpparts.asm"
 		.include 	"arithmetic/fpfromstr.asm"
+		.include 	"arithmetic/fptostr.asm"
+		.include 	"arithmetic/inttostr.asm"
 
 StartROM:
 		ldx 		#$FF 					; empty stack
@@ -36,26 +38,20 @@ StartROM:
 		jsr 		IF_Reset 				; reset external interface
 		jsr 		IFT_ClearScreen
 
-		.include 	"testing/fptest.asm"
-
-		ldx 		#22
-		ldy 		#0
-		jsr 		FPUSetBFromXY
-		jsr 		FPUCopyBToA
-		ldx 		#0
-		jsr 		FPUToFloatX
-
 		lda 		#toConvert & $FF 		
 		sta 		zGenPtr
 		lda 		#toConvert >> 8
 		sta 		zGenPtr+1
 		jsr 		FPAsciiToNumber
-stop1:	bcs 		stop1		
-		jmp 		TIM_Start
+		jsr 		FPUCopyBToA
+		lda 		#0	 					; reset the index.
+		sta 		NumBufX
+		jsr 		FPToString 				; convert to string.
 		.byte 		$5C
+h1:		bra 		h1
 
 toConvert:
-		.text 		"123456789",0
+		.text 		"0.00003167",0
 
 ERR_Handler:
 		bra 		ERR_Handler

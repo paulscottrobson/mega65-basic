@@ -31,3 +31,13 @@ for v in range(0,2):
 			fpv = pow(2,exponent) * mantissa / 0x100000000 * (-1 if sign != 0 else 1)
 		print("\tFloat {0}".format(fpv))
 	print()
+
+a = 0x300
+s = ""
+while a < 0x320:
+	s = s + chr(mem[a])
+	if mem[a] == 0:
+		a = 0xFFFF
+	else:
+		a += 1
+print("Float->Number buffer is '{0}'".format(s))

@@ -48,6 +48,12 @@ zGenPtr:	.word ? 						; general pointer.
 
 		* = $300
 
+Num_Buffer:	.fill 	32						; Buffer for number -> ASCII conversion
+NumBufX:	.byte 	?						; Index into buffer for number -> ASCII conversion.
+NumSuppress:.byte 	? 						; Buffer zero suppression flag.
+
+ExpTemp:	.byte ? 						; Byte used in ASCII->number conversion.
+
 Tim_PC:		.word ?							; program counter on BRK (Hi/Lo order)
 Tim_IRQ:	.word ?							; IRQ Vector (Hi/Lo order)
 Tim_SR:		.byte ? 						; Processor Status

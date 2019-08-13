@@ -117,9 +117,9 @@ _FPAExponent:
 		jsr 	FPAGetExponent 				; get exponent.
 		txa
 		plx
-		stx 	TIM_PC 						; use this as a temporary as not running TIM.
+		stx 	ExpTemp 					; use this as a temporary
 		clc
-		adc 	TIM_PC 						; add to the exponent.
+		adc 	ExpTemp 					; add to the exponent.
 		bvs 	_FPAError 					; overflow ?
 		tax
 ;	
@@ -167,11 +167,11 @@ _FPAGELoop:
 		cmp 	#"9"+1
 		bcs 	_FPAGEExit 			
 		;
-		stx 	TIM_PC 						
+		stx 	ExpTemp 						
 		txa 
 		asl 	a 							; x2
 		asl 	a 							; x4
-		adc 	TIM_PC 						; x5
+		adc 	ExpTemp 					; x5
 		asl 	a 							; x10
 		adc 	(zGenPtr),y 				; add digit and fix up.
 		sec
