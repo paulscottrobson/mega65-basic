@@ -2,7 +2,7 @@ TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
 		rethink:
-			float->string - code for exponent generation
+			float->string
 		revamp and run 'compiled FP' code as unit test.
 		
 - 	Code Review : Interface code, Floating Point code.
@@ -18,4 +18,6 @@ Fixes
 		- Anything in FPMacros (check XYZ usage for non shifts - may not be worth it)		
 		- Integer negation in fputils.asm
 		- Mantissa subtraction in fpdivide.asm
+-	FP guard byte on subtract ????
+
 		

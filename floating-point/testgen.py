@@ -60,12 +60,12 @@ def strf(n):
 
 random.seed()
 seed = random.randint(0,999999)
-#seed = 69932
+seed = 69932
 random.seed(seed)
 print("Generating test using seed {0}".format(seed))
 src = ""
 count = 0
-for i in range(0,4000):
+for i in range(0,10):
 	op = "+-*/~"[random.randint(0,4)]					# select operation
 	n1 = create()										# first number
 	n2 = create()										# second number.
@@ -73,9 +73,9 @@ for i in range(0,4000):
 		n2 = n1
 	if isOkay(op,n1,n2):
 		src += "L["+strf(n1)+"] C"						# first number -> B then -> A
-		src += " L["+strf(n2)+"]" 						# put into B
-		src = src + " " + op 							# calculate result A = A op B or op(A)
-		src += " L["+strf(calc(op,n1,n2))+"]"			# into B
+#		src += " L["+strf(n2)+"]" 						# put into B
+#		src = src + " " + op 							# calculate result A = A op B or op(A)
+#		src += " L["+strf(calc(op,n1,n2))+"]"			# into B
 		src += " = "									# check result.
 		src = src + "\n"
 		count += 1

@@ -126,22 +126,33 @@ class FloatX(Float):
 	#
 	#		Convert float to string.
 	#
-	def convertToString(self):
+	def convertToString(self,exponentCheck = True):
 		if self.type == Float.INTEGER:						# integer value.
 			return str(self.value if (self.value & 0x80000000) == 0 else self.value-0x100000000)
-		if self.zero != 0:
+		if self.zero != 0:									# zero ?
 			return "0"
 		#
-		#	TODO: Exponent - shift to 0 ? - output the number - output the shift.
+		if exponentCheck: 									# checking for exponent
+			if self.exponent < -16 or self.exponent > 20:	# do as exponent.
+				exponent = 0 								# shift into range by scaling.
+				self.toFloat()
+				while self.exponent < 0 or self.exponent >= 4:
+					if self.exponent < 0:
+						self.times10()
+						exponent -= 1
+					else:
+						self.divFloat(Float().setInteger(10).toFloat())
+						exponent += 1
+				return self.convertToString(False)+"e"+str(exponent)
 		#
 		s = "-" if self.sign else ""						# start with sign
 		self.sign = 0 										# now unsigned.
 		#
 		s = s + str(Float().copy(self).toInteger().value)	# convert to body to integer.
 		self.fractionalPart() 								# get fractional part.
-		if self.zero == 0 and len(s) < 10:
+		if self.zero == 0: 
 			s = s + "."
-			while self.zero == 0: 							# while more data and digits
+			while self.zero == 0 and len(s) <= 10:			# while more data and not too long.
 				self.times10() 								# x 10
 				digit = str(Float().copy(self).toInteger().value)# add integer part
 				s = s + digit 								# add digit
@@ -152,29 +163,10 @@ class FloatX(Float):
 		return s
 
 if __name__ == "__main__":
-	#nlist = ["123456.604",".8","1.3e9","0","-1.2","-3456.78","-2e4","31","42.4","0.000000021471","987654.321","1.44e-5"]
+	nlist = ["123456.604",".8","1.3e9","0","-1.2","-3456.78","-2e4","31","42.1","0.000000021471","987654.321","1.44e-5"]
 	#nlist = ["0.000000021471"]
-	#for s in nlist:
-	#	f = FloatX().convertFromString(s+"!")
-	#	print(s,float(s),f.toString())
-	#	print("-----> "+f.convertToString())
-	#	print("=====================")
-	random.seed(42)
-	for i in range(0,2000*1000):
-		if i % 10000 == 0:
-			print(i)
-		n1 = random.randint(-10000000,10000000)/1000
-		if random.randint(0,3) == 0:
-			n1 = n1 / 10000
-		if random.randint(0,5) == 0:
-			n1 = int(n1)
-		f = FloatX().convertFromString(str(n1)+"!")
-		s = f.convertToString()
-		#print("Us",s,"Python",n1,str(n1))
-		if n1 != 0:
-			error = abs(float(s)-n1)/abs(n1)		
-			allowed = 0.00001 if n1 != int(n1) else 0
-			assert error <= allowed,"{0} {1} {2}".format(s,n1,error)
-
-		else:
-			assert s == "0"
+	for s in nlist:
+		f = FloatX().convertFromString(s+"!")
+		print(s,float(s),f.toString())
+		print("-----> "+f.convertToString())
+		print("=====================")
