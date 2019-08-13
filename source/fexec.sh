@@ -1,6 +1,9 @@
 #
 #		Run BASIC (FPGA)
 #
+pushd ../floating-point
+sh test.sh
+popd
 64tass -q --m4510 -D CPU=4510  -D INTERFACE=2 -b basic.asm  -L rom.lst -o rom.bin
 truncate rom.bin -s 131072
 if [ $? -eq 0 ]

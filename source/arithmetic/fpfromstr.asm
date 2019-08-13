@@ -16,9 +16,10 @@
 ;
 ; *******************************************************************************************
 
-FPAsciiToFloat:
+FPAsciiToNumber:
 		phx
 		phy
+
 		ldx 	#0 							; set the initial value to integer to zero.
 		ldy 	#0
 		jsr 	FPUSetBFromXY
@@ -98,7 +99,9 @@ _FPAEndConstantPart:
 _FPANotNegative:		
 		txa 								; negate X as we want to divide by 10^x
 		eor 	#$FF
+		beq 	_FPANotDecimal2				; if value is $FF decimals never used, used 0.
 		inc 	a
+_FPANotDecimal2:		
 		tax
 ;
 ;		Have constant part in the value, decimal places to reduce by in X.
@@ -127,6 +130,7 @@ _FPANoExponent:
 		beq 	_FPANoScaling
 		jsr 	FPScaleBByATimes10
 _FPANoScaling:		
+
 		tya 								; Y is the offset.
 		ply
 		plx		

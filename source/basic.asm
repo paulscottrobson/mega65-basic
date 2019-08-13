@@ -32,8 +32,11 @@
 StartROM:
 		ldx 		#$FF 					; empty stack
 		txs
+
 		jsr 		IF_Reset 				; reset external interface
 		jsr 		IFT_ClearScreen
+
+		.include 	"testing/fptest.asm"
 
 		ldx 		#22
 		ldy 		#0
@@ -46,7 +49,7 @@ StartROM:
 		sta 		zGenPtr
 		lda 		#toConvert >> 8
 		sta 		zGenPtr+1
-		jsr 		FPAsciiToFloat 			; convert it.
+		jsr 		FPAsciiToNumber
 stop1:	bcs 		stop1		
 		jmp 		TIM_Start
 		.byte 		$5C

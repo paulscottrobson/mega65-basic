@@ -15,9 +15,9 @@ IF_Height 	= 25 							; characters down.
 IF_Pos 		= 4 							; current position, start of line.
 IF_XPos 	= 6 							; current position, horizontal.
 
-IF_Screen = $B000							; 2k screen RAM here
-IF_PKeyboard = $B800						; Keyboard port.
-IF_PBreak = $B801 							; Break key.
+IF_Screen = $8000							; 2k screen RAM here
+IF_PKeyboard = $8800						; Keyboard port.
+IF_PBreak = $8801 							; Break key.
 
 ; *******************************************************************************************
 ;

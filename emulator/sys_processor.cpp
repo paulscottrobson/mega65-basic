@@ -93,7 +93,7 @@ BYTE8 CPUExecuteInstruction(void) {
 	cycles = cycles + 4;
 	if (cycles < CYCLES_PER_FRAME) return 0;										// Not completed a frame.
 	cycles = cycles - CYCLES_PER_FRAME;												// Adjust this frame rate.
-	ramMemory[0xB801] = (GFXIsKeyPressed(GFXKEY_CONTROL) && GFXIsKeyPressed('C')) ? 1 : 0;
+	ramMemory[0x8801] = (GFXIsKeyPressed(GFXKEY_CONTROL) && GFXIsKeyPressed('C')) ? 1 : 0;
 	return FRAME_RATE;																// Return frame rate.
 }
 
@@ -117,7 +117,7 @@ int CPUKeyHandler(int key,int inRunMode) {
 	if (inRunMode != 0) {
 		int akey = GFXToASCII(key,-1);
 		//printf("%d\n",akey);
-		ramMemory[0xB800] = akey & 0xFF;
+		ramMemory[0x8800] = akey & 0xFF;
 		return 0;
 	}
 	return key;

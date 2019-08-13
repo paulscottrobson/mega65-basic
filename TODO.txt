@@ -1,9 +1,8 @@
 TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
-		rethink:
+		implement:
 			float->string
-		revamp and run 'compiled FP' code as unit test.
 		
 - 	Code Review : Interface code, Floating Point code.
 -	Write the expression evaluator
