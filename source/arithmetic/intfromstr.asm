@@ -26,6 +26,8 @@ IntFromStringY:
 		sta 	A_Mantissa+1
 		sta 	A_Mantissa+2
 		sta 	A_Mantissa+3
+		lda 	#Type_Integer
+		sta 	A_Type
 ;
 _IFSLoop:		
 		lda 	(zGenPtr),y 				; get next
@@ -33,6 +35,10 @@ _IFSLoop:
 		bcc 	_IFSExit
 		cmp 	#"9"+1
 		bcs 	_IFSExit
+		;
+		lda 	A_Mantissa+3 				; is High Byte > $7F/10
+		cmp 	#12
+		bcs 	_IFSOverflow
 		;
 		lda 	A_Mantissa+3 				; push mantissa on stack backwards
 		pha
@@ -80,7 +86,12 @@ _IFSExit:
 _IFSOkay:		
 		pla 								; and exit.
 		rts
+
+_IFSOverflow:
+		jsr 	ERR_Handler
+		.text 	"Constant overflow",0		
 ;
 IFSAShiftLeft:
 		#asl32 	A_Mantissa
 		rts
+

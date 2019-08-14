@@ -2,10 +2,6 @@ TODO
 ====
 -	Implement the Floating Point code and test it and the supporting routines
 
-		fix:
-			overflow on str->int
-		implement:
-			string->float (decimal part code and exponent code)
 		run:	
 			test code, fix up to handle ! for negative constants.
 		implement:

@@ -48,13 +48,12 @@ StartROM:
 		jsr 		INTFromString			; grab an integer
 err1:	bcs 		err1		
 		jsr 		FPFromString  			; maybe extend as decimal.
-err2:	bcs 		err2		
-;		jsr 		FPToString 				; convert to string.
+		jsr 		FPToString 				; convert to string.
 		.byte 		$5C
 h1:		bra 		h1
 
 toConvert:
-		.text 		"38421.45",0
+		.text 		"0.394e12",0
 
 ERR_Handler:
 		bra 		ERR_Handler

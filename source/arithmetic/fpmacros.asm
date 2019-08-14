@@ -90,3 +90,21 @@ ror32x 	.macro 								; ror32 \1,x
 		ror 	1+\1,x
 		ror 	0+\1,x
 		.endm		
+
+fpush 	.macro 								; push 8 byte value on 6502 stack
+		ldx 	#0
+_F1:	lda 	\1,x
+		pha
+		inx
+		cpx 	#8
+		bne 	_F1
+		.endm
+
+fpull 	.macro 								; pull 8 byte value off 6502 stack.
+		ldx 	#7
+_F2:	pla
+		sta 	\1,x
+		dex
+		bpl		_F2
+		.endm
+
