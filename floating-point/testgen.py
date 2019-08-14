@@ -13,14 +13,15 @@ import random
 
 def create():
 	n = random.randint(0,3)
+	r = 0
 	if n == 0:
 		r = random.randint(-3,3)
 	if n == 1:
-		r = random.randint(-20000,20000)/100
+		r = random.randint(-20000,20000)
 	if n == 2:
-		r = random.randint(-200000,200000) / 1000
-	if n == 3:
-		n = random.randint(-1000,1000)/100
+		r = random.randint(-200000,200000)/100
+	if n == 33:
+		n = random.randint(-1000,1000)/1000
 		pw = random.randint(-15,15)
 		r = n * pow(10,pw)
 	s = "{0:8g}".format(r)
@@ -54,9 +55,13 @@ def isOkay(op,n1,n2):
 	return True 
 
 def strf(n):
+	sign = "!" if n < 0 else ""
+	n = abs(n)
 	if abs(n) < 800000:
-		return str(n)
-	return "{:8e}".format(n)
+		n = str(n)
+	else:
+		n = "{:g}".format(n)
+	return "["+n+"]"+sign+" "
 
 random.seed()
 seed = random.randint(0,999999)
@@ -72,10 +77,10 @@ while len(src) < 4096+8192:
 	if random.randint(0,20) == 0:						# occasionally equal.
 		n2 = n1
 	if isOkay(op,n1,n2):
-		src += "L["+strf(n2)+"] C"						# second number -> A then -> B
-		src += " L["+strf(n1)+"]" 						# first number into A
+		src += "L"+strf(n2)+" C"						# second number -> A then -> B
+		src += " L"+strf(n1)+"" 						# first number into A
 		src = src + " " + op + "C" 						# calculate result A = A op B or op(A), to B
-		src += " L["+strf(calc(op,n1,n2))+"]"			# actual result into A
+		src += " L"+strf(calc(op,n1,n2))+""				# actual result into A
 		src += " = "									# check result.
 		src = src + "%\n"
 		count += 1

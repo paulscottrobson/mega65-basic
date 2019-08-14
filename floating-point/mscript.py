@@ -45,6 +45,8 @@ while script != "":
 		floatA.mulFloat(floatB)
 	elif cmd == "/":
 		floatA.divFloat(floatB)
+	elif cmd == "!":
+		floatA.sign = 0 if floatA.sign != 0 else 0xFF
 	elif cmd == "~":
 		result = floatA.cmpFloat(floatB)
 		floatA.setInteger(result).toFloat()

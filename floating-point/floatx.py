@@ -69,10 +69,6 @@ class FloatX(Float):
 	#		Convert number string to float/int.
 	#
 	def convertFromString(self,s):
-		sign = 1 											# sign of value
-		if s[0] == '-': 									# work out sign.
-			sign = -1
-			s = s[1:]
 		self.decimals = -1									# count of DP.
 		self.setInteger(0)									# set result to zero
 		#
@@ -91,8 +87,6 @@ class FloatX(Float):
 			else:
 				self.decimals = 0				
 			s = s[1:]
-		if sign < 0:
-			self.value = (-self.value) & 0xFFFFFFFF
 		#
 		#		If self.decimals > 0 we need to divide by that many decimal places.
 		#

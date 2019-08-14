@@ -27,9 +27,9 @@
 		.include 	"arithmetic/fpmultiply.asm"
 		.include 	"arithmetic/fpdivide.asm"
 		.include 	"arithmetic/fpparts.asm"
-		.include 	"arithmetic/fpfromstr.asm"
-		.include 	"arithmetic/fptostr.asm"
 		.include 	"arithmetic/inttostr.asm"
+		.include 	"arithmetic/fptostr.asm"
+		.include 	"arithmetic/intfromstr.asm"
 
 StartROM:
 		ldx 		#$FF 					; empty stack
@@ -40,29 +40,17 @@ StartROM:
 
 ;		.include 	"testing/fptest.asm"
 
-		ldx 		#1
-		ldy 		#0
-_TLoop:
-		phx
-		phy
 		lda 		#toConvert & $FF 		
 		sta 		zGenPtr
 		lda 		#toConvert >> 8
 		sta 		zGenPtr+1
-		jsr 		FPAsciiToNumber
-		ply
-		plx
-		dey
-		bne 		_TLoop
-		dex
-		bne 		_TLoop
-
+		jsr 		INTFromString
 ;		jsr 		FPToString 				; convert to string.
 		.byte 		$5C
 h1:		bra 		h1
 
 toConvert:
-		.text 		"3842145.13",0
+		.text 		"38421.45",0
 
 ERR_Handler:
 		bra 		ERR_Handler

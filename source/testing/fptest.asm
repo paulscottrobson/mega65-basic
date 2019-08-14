@@ -118,7 +118,7 @@ FPT_Copy:
 		;
 FPT_Load:
 		jsr 	FPTGet 						; get the [ character
-		jsr 	FPAsciiToNumber
+		jsr 	INTFromString
 		bcs 	FPT_Error
 		ldx 	#0							; make it float
 		jsr 	FPUToFloatX		
