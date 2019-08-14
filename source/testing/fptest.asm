@@ -61,6 +61,8 @@ FPTLoop:
 		beq 	FPT_Divide
 		cmp 	#"~"		
 		beq 	FPT_Compare
+		cmp 	#"!"
+		beq 	FPT_Negate
 		;
 FPT_Error:
 		bra 	FPT_Error		
@@ -78,7 +80,13 @@ FPT_Multiply:
 		bra 	FPTLoop		
 FPT_Divide:
 		jsr 	FPDivide
-		bra 	FPTLoop		
+		bra 	FPTLoop	
+		;
+FPT_Negate:
+		lda 	A_Sign
+		eor 	#$FF
+		sta 	A_Sign
+		bra 	FPTLoop			
 		;
 FPT_Compare:
 		jsr 	FPCompare
@@ -120,6 +128,7 @@ FPT_Load:
 		jsr 	FPTGet 						; get the [ character
 		jsr 	INTFromString
 		bcs 	FPT_Error
+		jsr 	FPFromString
 		ldx 	#0							; make it float
 		jsr 	FPUToFloatX		
 _FPTLoad1:

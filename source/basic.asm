@@ -39,7 +39,7 @@ StartROM:
 		jsr 		IF_Reset 				; reset external interface
 		jsr 		IFT_ClearScreen
 
-;		.include 	"testing/fptest.asm"
+		.include 	"testing/fptest.asm"
 
 		lda 		#toConvert & $FF 		
 		sta 		zGenPtr
@@ -53,7 +53,7 @@ err1:	bcs 		err1
 h1:		bra 		h1
 
 toConvert:
-		.text 		"0.394e12",0
+		.text 		"0.2",0
 
 ERR_Handler:
 		bra 		ERR_Handler

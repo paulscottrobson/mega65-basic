@@ -1,13 +1,5 @@
 TODO
 ====
--	Implement the Floating Point code and test it and the supporting routines
-
-		run:	
-			test code, fix up to handle ! for negative constants.
-		implement:
-			float->string (exponent code)
-		
--	Fix up test to handle ! for -A => A and check it.		
 - 	Code Review : Interface code, Floating Point code.
 -	Write the expression evaluator
 - 	Write the basic executor and tokeniser and implement ASSERT.

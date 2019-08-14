@@ -59,8 +59,62 @@ _FPTSStandard:
 		;			Output in exponent format
 		;
 _FPTSExponent:
+		ldx 		#0 						; this is the exponent count.
+_FPTSExponentLoop:
+		lda 		A_Exponent 				; exponent < 0, x by 10
+		bmi 		_FPTSTimes		
+		cmp 		#5 						; exit when in range 0..4
+		bcc 		_FPTSScaledToExp
+		lda 		#-1 					; divide by 10.
+		jsr 		FPScaleABy10PowerAC
+		inx
+		bra 		_FPTSExponentLoop
+_FPTSTimes: 								; same but x10.
+		lda 		#1
+		jsr 		FPScaleABy10PowerAC
+		dex
+		bra 		_FPTSExponentLoop
+		;
+_FPTSScaledToExp:
+		phx 								; save exponent
+		jsr 		FPTOutputBody 			; output the body.
+		lda 		#"E"					; output E
+		jsr 		ITSOutputCharacter
+		plx
+		phx
+		bpl 		_FPTSOutExponent
+		lda 		#"-" 					; output - ?
+		jsr 		ITSOutputCharacter
+		pla 								; negate the exponent.
+		eor 		#$FF
+		inc 		a
+		pha
+_FPTSOutExponent:		
+		plx
+		cpx 		#10
+		bcc 		_FPTSNoTens
+		ldy 		#0 						; high digit.
+_FPTSHighLoop:
+		iny 								; / 10, keep subtracting 10.
+		txa
+		sec
+		sbc 		#10
+		tax
+		cpx 		#10
+		bcs 		_FPTSHighLoop		
+		tya
+		ora 		#"0"
+		jsr 		ITSOutputCharacter
+_FPTSNoTens: 								; low digit
+		txa
+		ora 		#"0"
+		jsr 		ITSOutputCharacter
+		bra			_FPTSExit
+
+
 		nop
 
+_FPTSScaled:		
 ; *******************************************************************************************
 ;
 ;								Output float as integer.decimals
