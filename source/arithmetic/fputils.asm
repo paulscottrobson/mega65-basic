@@ -4,6 +4,7 @@
 ;		Name : 		fputils.asm
 ;		Purpose :	Floating Point Utilities
 ;		Date :		11th August 2019
+;		Reviewed : 	14th August 2019 		(Review#1)
 ;		Author : 	Paul Robson (paul@robsons.org.uk)
 ;
 ; *******************************************************************************************
@@ -11,7 +12,7 @@
 
 ; *******************************************************************************************
 ;
-;							Sign Extend XY and put in A
+;							Sign Extend XY and put in A (as integer)
 ;
 ; *******************************************************************************************
 
@@ -22,11 +23,11 @@ FPUSetAFromXY:
 		tya
 		asl 	a 							; CS if MSB set.
 		lda 	#0 							; 0 if CC,$FF if CS
-		bcc 	_FPUSB1
+		bcc 	_FPUSA1
 		dec 	a
-_FPUSB1:sta 	A_Mantissa+2 				; these are the two ms bytes
+_FPUSA1:sta 	A_Mantissa+2 				; these are the two ms bytes
 		sta 	A_Mantissa+3		
-		lda 	#Type_Integer 				; type is integer.
+		lda 	#Type_Integer 				; type is integer (as integer)
 		sta 	A_Type 
 		pla
 		rts
@@ -101,10 +102,12 @@ FPUToFloatX:
 		pha
 		lda 	A_Type,x					; exit if already float.
 		bmi 	_FPUBExit
+		;
 		lda 	#Type_Float 				; set float type
 		sta 	A_Type,x
+		;
 		lda 	#32 						; and the exponent to 32, makes it * 2^32
-		sta 	A_Exponent,x
+		sta 	A_Exponent,x 				; x mantissa.
 		;
 		lda 	#0 							; clear sign/zero bytes
 		sta 	A_Sign,x 					
@@ -124,7 +127,7 @@ _FPUBPositive:
 		dec 	A_Zero,x 					; set the zero byte to $FF
 _FPUBNonZero:
 		;
-		jsr 	FPUNormaliseX
+		jsr 	FPUNormaliseX 				; normalise the floating point.
 _FPUBExit:
 		pla
 		rts
@@ -139,18 +142,20 @@ FPUAToInteger:
 		pha
 		lda 	A_Type 						; if already integer, exit
 		beq 	_FPUATOI_Exit
+		;
 		lda 	#Type_Integer 				; make type zero (integer)
 		sta 	A_Type
 		lda 	A_Zero						; if zero, return zero.
 		bne 	_FPUATOI_Zero		
+		;
 		lda 	A_Exponent 					; check -ve exponent or < 32
 		bmi 	_FPUAToIOk
 		cmp 	#32 						; sign exponent >= 32, overflow.
 		bcs 	FP_Overflow
 _FPUAToIOk:		
-		;
+		;									; inverse of the toFloat() operation.
 _FPUAToIToInteger:
-		lda 	A_Exponent 					; reached ^32
+		lda 	A_Exponent 					; keep right shifting until reached ^32
 		cmp 	#32
 		beq 	_FPUAtoICheckSign 			; check sign needs fixing up.
 		inc 	A_Exponent 					; increment Exponent
@@ -195,11 +200,11 @@ FPUTimes10X:
 		sta 	ZLTemp1+2
 		lda 	A_Mantissa+3,x
 		sta 	ZLTemp1+3
-		#lsr32 	ZLTemp1 					; divide by 4
-		#lsr32 	ZLTemp1
+		#lsr32 	ZLTemp1 					; divide by 4. What we're doing here is
+		#lsr32 	ZLTemp1						; 8 x n + 8 x n/4
 		;
 		clc
-		lda 	A_Mantissa+0,x
+		lda 	A_Mantissa+0,x 				; add n/4 to n
 		adc 	ZLTemp1+0
 		sta 	A_Mantissa+0,x
 		lda 	A_Mantissa+1,x
@@ -216,7 +221,7 @@ FPUTimes10X:
 		ror32x	A_Mantissa 					; rotate carry back into mantissa
 		inc 	A_Exponent,x				; fix exponent
 _FPUTimes10:
-		lda 	A_Exponent,x 				; fix up x 2^3
+		lda 	A_Exponent,x 				; fix up x 2^3 e.g. multiply by 8.
 		clc
 		adc 	#3
 		sta 	A_Exponent,x
@@ -233,6 +238,7 @@ FPUNormaliseX:
 		pha
 		lda 	A_Zero,x 					; if float-zero, don't need to normalise it.
 		bne 	_FPUNExit
+		;
 _FPULoop:
 		lda 	A_Mantissa+3,x 				; bit 31 of mantissa set.
 		bmi 	_FPUNExit 					; if so, we are normalised.
@@ -242,9 +248,10 @@ _FPULoop:
 		dec 	A_Exponent,x 				; decrement exponent
 		lda 	A_Exponent,x 				; if exponent not $7F (e.g. gone < -$80)
 		cmp 	#$7F
-		bne 	_FPULoop 		
+		bne 	_FPULoop 		 			; go round again until bit 31 set.
 		;
-		dec 	A_Zero,x 					; the result is now zero.
+		lda 	#$FF
+		sta 	A_Zero,x 					; the result is now zero.
 _FPUNExit:
 		pla
 		rts
@@ -258,7 +265,7 @@ _FPUNExit:
 FPUIntegerNegateX:
 		pha
 		sec
-		lda 	#0
+		lda 	#0 							; simple 32 bit subtraction.
 		sbc 	A_Mantissa+0,x
 		sta 	A_Mantissa+0,x
 		lda 	#0
@@ -303,11 +310,11 @@ FPCompare:
 		;
 		inc 	a 							; map -1,0,1 to 0,1,2
 		cmp 	#3 							; if >= 3 e.g. abs difference > 1
-		bcs 	_FPCNotEqual
+		bcs 	_FPCNotEqual  				; exponents can't be more than 2 out.
 		;
 		clc
-		lda 	B_Mantissa 					; mean of exponents
-		adc 	B_Mantissa+1
+		lda 	B_Mantissa 					; mean of exponents (note above, we are using
+		adc 	B_Mantissa+1				; the mantissa as a temporary store here()
 		ror 	a 							; shift carry out back in.
 		;
 		sec
@@ -324,6 +331,7 @@ _FPCNotOverflow:
 		lda 	#0 							; "approximately equal" allowing for rounding
 		bra 	_FPCExit 					; errors. 
 		;
+		;
 _FPCNotEqual:
 		lda 	A_Sign 						; if sign is -ve , will be $FF, so return $FF
 		bne 	_FPCExit
@@ -335,4 +343,3 @@ _FPCPullZero:
 		lda 	#0 							; and return zero
 _FPCExit:		
 		rts
-

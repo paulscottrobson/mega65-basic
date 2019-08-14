@@ -4,6 +4,7 @@
 ;		Name : 		fpadd.asm
 ;		Purpose :	Floating Point Add/Subtract
 ;		Date :		11th August 2019
+;		Reviewed : 	14th August 2019 		(Review#1)
 ;		Author : 	Paul Robson (paul@robsons.org.uk)
 ;
 ; *******************************************************************************************
@@ -20,7 +21,7 @@ FPSubtract:
 		lda 	B_Sign 						; flip the sign of B and add
 		eor 	#$FF
 		sta 	B_Sign
-		pla
+		pla 								; --- and fall through ---
 
 ; *******************************************************************************************
 ;
@@ -95,14 +96,14 @@ _FPAW_DoArithmetic:
 		bcc 	_FPAWExit 					; no carry.
 		inc 	A_Exponent 					; so shift exponent up.
 		sec
-		#ror32 	A_Mantissa
+		#ror32 	A_Mantissa 					; and rotate carry and mantissa right.
 		bra 	_FPAWExit
 		;
 		;		Adding B to A, B is -ve, A is +ve
 		;
 _FPAW_BNegative:
-		#sub32	A_Mantissa,B_Mantissa
-		bcs		_FPAWExit 					; no borrow. 	
+		#sub32	A_Mantissa,B_Mantissa 		; difference.
+		bcs		_FPAWExit 					; no borrow, e.g. the result is positive.	
 		ldx 	#0  						; negate the mantissa
 		jsr 	FPUIntegerNegateX
 		lda 	A_Sign 						; flip result sign

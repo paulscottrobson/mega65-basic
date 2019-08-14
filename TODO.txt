@@ -1,6 +1,7 @@
 TODO
 ====
-- 	Code Review : Interface code, Floating Point code.
+- 	Code Review : Interface code, Floating Point multiply/divide and conversions.
+- 	Think about the tokenising format.
 -	Write the expression evaluator
 - 	Write the basic executor and tokeniser and implement ASSERT.
 
