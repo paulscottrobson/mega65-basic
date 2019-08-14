@@ -30,6 +30,7 @@
 		.include 	"arithmetic/inttostr.asm"
 		.include 	"arithmetic/fptostr.asm"
 		.include 	"arithmetic/intfromstr.asm"
+		.include 	"arithmetic/fpfromstr.asm"
 
 StartROM:
 		ldx 		#$FF 					; empty stack
@@ -44,7 +45,10 @@ StartROM:
 		sta 		zGenPtr
 		lda 		#toConvert >> 8
 		sta 		zGenPtr+1
-		jsr 		INTFromString
+		jsr 		INTFromString			; grab an integer
+err1:	bcs 		err1		
+		jsr 		FPFromString  			; maybe extend as decimal.
+err2:	bcs 		err2		
 ;		jsr 		FPToString 				; convert to string.
 		.byte 		$5C
 h1:		bra 		h1

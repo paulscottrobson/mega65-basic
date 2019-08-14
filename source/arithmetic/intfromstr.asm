@@ -12,19 +12,20 @@
 ; *******************************************************************************************
 ;
 ;		Convert string at GenPtr into A_Register. Return CC if okay, CS on error
-;		On successful exit A is the characters consumed from the string. Does not
+;		On successful exit Y is the characters consumed from the string. Does not
 ;		support - (done by unary operator)
 ;
 ; *******************************************************************************************
 
 IntFromString:
-		phy
+		ldy 	#0
+IntFromStringY:		
+		pha
 		lda 	#0 							; clear the mantissa
 		sta 	A_Mantissa
 		sta 	A_Mantissa+1
 		sta 	A_Mantissa+2
 		sta 	A_Mantissa+3
-		tay 								; character index.
 ;
 _IFSLoop:		
 		lda 	(zGenPtr),y 				; get next
@@ -77,7 +78,7 @@ _IFSExit:
 		bne 	_IFSOkay 					; if was non zero, conversion was okay
 		sec 								; else no integer found.
 _IFSOkay:		
-		ply 								; and exit.
+		pla 								; and exit.
 		rts
 ;
 IFSAShiftLeft:

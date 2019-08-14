@@ -57,10 +57,10 @@ def isOkay(op,n1,n2):
 def strf(n):
 	sign = "!" if n < 0 else ""
 	n = abs(n)
-	if abs(n) < 800000:
+	if abs(n) < 800000 and n == int(n):
 		n = str(n)
 	else:
-		n = "{:g}".format(n)
+		n = "{:.7g}".format(n)
 	return "["+n+"]"+sign+" "
 
 random.seed()

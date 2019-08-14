@@ -42,9 +42,30 @@ _FPTSIsFloat:
 		sta 		A_Sign
 		lda 		#"-"					; output a minus
 		jsr 		ITSOutputCharacter
+		;
 _FPTSNotSigned:
+		lda 		A_Exponent
+		cmp 		#20 					; 0-20 as standard
+		bcc 		_FPTSStandard
+		cmp 		#240 					; -16..-1 as standard
+		bcc 		_FPTSExponent 			; 
+		;
+		;			Standard format e.g. aaaaa.xxxxxx
+		;
+_FPTSStandard:
 		jsr 		FPTOutputBody 			; output the body.
 		bra 		_FPTSExit
+		;
+		;			Output in exponent format
+		;
+_FPTSExponent:
+		nop
+
+; *******************************************************************************************
+;
+;								Output float as integer.decimals
+;		
+; *******************************************************************************************
 
 FPTOutputBody:
 		jsr 		FPUCopyAtoB 			; save in B
