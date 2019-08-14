@@ -31,12 +31,12 @@ while script != "":
 	if cmd == "L":
 		m = re.match("^\\[(.*?)\\](.*)$",script)
 		assert m is not None,"<"+script+">"
-		floatB.convertFromString(m.group(1)+"!").toFloat()
+		floatA.convertFromString(m.group(1)+"!").toFloat()
 		script = m.group(2)
 	elif cmd == "W":
 		print("Output : "+floatA.convertToString())
 	elif cmd == "C":
-		floatA.copy(floatB)
+		floatB.copy(floatA)
 	elif cmd == "+":
 		floatA.addFloat(floatB)
 	elif cmd == "-":

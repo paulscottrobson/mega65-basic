@@ -72,10 +72,10 @@ while len(src) < 4096+8192:
 	if random.randint(0,20) == 0:						# occasionally equal.
 		n2 = n1
 	if isOkay(op,n1,n2):
-		src += "L["+strf(n1)+"] C"						# first number -> B then -> A
-		src += " L["+strf(n2)+"]" 						# put into B
-		src = src + " " + op 							# calculate result A = A op B or op(A)
-		src += " L["+strf(calc(op,n1,n2))+"]"			# into B
+		src += "L["+strf(n2)+"] C"						# second number -> A then -> B
+		src += " L["+strf(n1)+"]" 						# first number into A
+		src = src + " " + op + "C" 						# calculate result A = A op B or op(A), to B
+		src += " L["+strf(calc(op,n1,n2))+"]"			# actual result into A
 		src += " = "									# check result.
 		src = src + "%\n"
 		count += 1

@@ -11,7 +11,29 @@
 
 ; *******************************************************************************************
 ;
-;							Sign Extend XY and put in B (Testing)
+;							Sign Extend XY and put in A
+;
+; *******************************************************************************************
+
+FPUSetAFromXY:
+		pha
+		stx 	A_Mantissa 					; set the lower 2 bytes
+		sty 	A_Mantissa+1
+		tya
+		asl 	a 							; CS if MSB set.
+		lda 	#0 							; 0 if CC,$FF if CS
+		bcc 	_FPUSB1
+		dec 	a
+_FPUSB1:sta 	A_Mantissa+2 				; these are the two ms bytes
+		sta 	A_Mantissa+3		
+		lda 	#Type_Integer 				; type is integer.
+		sta 	A_Type 
+		pla
+		rts
+
+; *******************************************************************************************
+;
+;							Sign Extend XY and put in B
 ;
 ; *******************************************************************************************
 
@@ -94,7 +116,10 @@ FPUToFloatX:
 		dec 	A_Sign,x 					; set the sign byte to $FF
 _FPUBPositive:		
 		;
-		#iszero32 B_Mantissa 				; mantissa is zero ?
+		lda 	A_Mantissa,x 				; mantissa is zero ?
+		ora 	A_Mantissa+1,x
+		ora 	A_Mantissa+2,x
+		ora 	A_Mantissa+3,x
 		bne 	_FPUBNonZero
 		dec 	A_Zero,x 					; set the zero byte to $FF
 _FPUBNonZero:

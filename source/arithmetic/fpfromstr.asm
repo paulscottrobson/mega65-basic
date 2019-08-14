@@ -11,7 +11,7 @@
 
 ; *******************************************************************************************
 ;
-;		Convert string at GenPtr into B_Register. Return CC if okay, CS on error
+;		Convert string at GenPtr into A_Register. Return CC if okay, CS on error
 ;		On successful exit A is the characters consumed from the string.
 ;
 ; *******************************************************************************************
@@ -22,7 +22,7 @@ FPAsciiToNumber:
 
 		ldx 	#0 							; set the initial value to integer to zero.
 		ldy 	#0
-		jsr 	FPUSetBFromXY
+		jsr 	FPUSetAFromXY
 		;
 		ldy 	#0  						; get first character.
 		lda 	(zGenPtr),y 
@@ -51,7 +51,7 @@ _FPANotDecimal:
 		bcs 	_FPAEndConstantPart
 		;
 		;
-		lda 	B_Mantissa+3 				; check for overflow.
+		lda 	A_Mantissa+3 				; check for overflow.
 		cmp 	#$0C 						; roughly $7F/10
 		bcs 	_FPASkipDigit 				; can't do any more
 		;
@@ -63,25 +63,25 @@ _FPANotInDecimal:
 		lda 	(zGenPtr),y 				; get the digit.
 		pha 								; save digit.
 		iny 								; skip over it
-		jsr 	FPABTimes10Int 				; multiply B_Mantissa by 10.
+		jsr 	FPAATimes10Int 				; multiply A_Mantissa by 10 as integer
 		pla
 		and 	#15 						; make 0-9
 		clc
-		adc 	B_Mantissa
-		sta 	B_Mantissa
+		adc 	A_Mantissa
+		sta 	A_Mantissa
 		bcc 	_FPAGetNextBody
-		inc 	B_Mantissa+1
+		inc 	A_Mantissa+1
 		bne 	_FPAGetNextBody
-		inc 	B_Mantissa+2
+		inc 	A_Mantissa+2
 		bne 	_FPAGetNextBody
-		inc 	B_Mantissa+3
+		inc 	A_Mantissa+3
 		bra 	_FPAGetNextBody
 ;
 _FPASkipDigit:
 		iny
 		cpx 	#$00						; in decimals, can skip
 		bpl 	_FPAGetNextBody		
-		pla 								; throw minus
+		pla 								; throw minus - no digits used.
 ;
 _FPAError: 									; overflow error
 		ply
@@ -93,7 +93,7 @@ _FPAEndConstantPart:
 		pla 								; minus flag.
 		bne 	_FPANotNegative				; skip if +ve
 		phx
-		ldx 	#B_Mantissa-A_Mantissa
+		ldx 	#0
 		jsr 	FPUIntegerNegateX
 		plx
 _FPANotNegative:		
@@ -128,7 +128,7 @@ _FPAExponent:
 _FPANoExponent:
 		txa 								; if adjustment is zero, do nothing
 		beq 	_FPANoScaling
-		jsr 	FPScaleBByATimes10
+		jsr 	FPScaleAByATimes10
 _FPANoScaling:		
 
 		tya 								; Y is the offset.
@@ -185,63 +185,62 @@ _FPAGEExit:
 
 ; *******************************************************************************************
 ;
-;						Multiply integer value in B Mantissa by 10
+;						Multiply integer value in A Mantissa by 10
 ;
 ; *******************************************************************************************
 
 
-FPABTimes10Int:
-		jsr 	_FPABTimes2 				; x 2
-		lda 	B_Mantissa+3 				; save on stack.
+FPAATimes10Int:
+		jsr 	_FPAATimes2 				; x 2
+		lda 	A_Mantissa+3 				; save on stack.
 		pha
-		lda 	B_Mantissa+2
+		lda 	A_Mantissa+2
 		pha
-		lda 	B_Mantissa+1
+		lda 	A_Mantissa+1
 		pha
-		lda 	B_Mantissa+0
+		lda 	A_Mantissa+0
 		pha
-		jsr 	_FPABTimes2 				; x 4
-		jsr 	_FPABTimes2 				; x 8
+		jsr 	_FPAATimes2 				; x 4
+		jsr 	_FPAATimes2 				; x 8
 		clc
 		pla 								; add x 2 on => x 10
-		adc 	B_Mantissa+0
-		sta 	B_Mantissa+0
+		adc 	A_Mantissa+0
+		sta 	A_Mantissa+0
 		pla
-		adc 	B_Mantissa+1
-		sta 	B_Mantissa+1
+		adc 	A_Mantissa+1
+		sta 	A_Mantissa+1
 		pla
-		adc 	B_Mantissa+2
-		sta 	B_Mantissa+2
+		adc 	A_Mantissa+2
+		sta 	A_Mantissa+2
 		pla
-		adc 	B_Mantissa+3
-		sta 	B_Mantissa+3
+		adc 	A_Mantissa+3
+		sta 	A_Mantissa+3
 		rts
 ;
-_FPABTimes2:
-		#asl32	B_Mantissa 					; x 2
+_FPAATimes2:
+		#asl32	A_Mantissa 					; x 2
 		rts
 
 ; *******************************************************************************************
 ;
-;					  if A < 0 B = B / 10^|A| else B = B * 10^|A|
+;					  if AC < 0 A = A / 10^|AC| else A = A * 10^|AC|
 ;
 ; *******************************************************************************************
 
-FPScaleBByATimes10:
+FPScaleAByATimes10:
 		phx
 		phy
 		tay
 
 		ldx 	#7
 _FPSPush:
-		lda 	A_Mantissa,x
+		lda 	B_Mantissa,x
 		pha
 		dex
 		bpl 	_FPSPush 
 
 		tya
-		pha 								; save scalar.
-		jsr 	FPUCopyBtoA					; put B in A
+		pha 								; save scalar count
 
 		ldx		#1
 		ldy 	#0
@@ -273,12 +272,11 @@ _FPCreateScalar:
 _FPSDivide:
 		jsr 	FPDivide
 _FPSExit:
-		jsr 	FPUCopyAToB 				; result back in B		
 
 		ldx 	#0
 _FPSPull:
 		pla
-		sta 	A_Mantissa,x
+		sta 	B_Mantissa,x
 		inx
 		cpx 	#8
 		bne 	_FPSPull

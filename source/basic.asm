@@ -38,20 +38,31 @@ StartROM:
 		jsr 		IF_Reset 				; reset external interface
 		jsr 		IFT_ClearScreen
 
+;		.include 	"testing/fptest.asm"
+
+		ldx 		#1
+		ldy 		#0
+_TLoop:
+		phx
+		phy
 		lda 		#toConvert & $FF 		
 		sta 		zGenPtr
 		lda 		#toConvert >> 8
 		sta 		zGenPtr+1
 		jsr 		FPAsciiToNumber
-		jsr 		FPUCopyBToA
-		lda 		#0	 					; reset the index.
-		sta 		NumBufX
-		jsr 		FPToString 				; convert to string.
+		ply
+		plx
+		dey
+		bne 		_TLoop
+		dex
+		bne 		_TLoop
+
+;		jsr 		FPToString 				; convert to string.
 		.byte 		$5C
 h1:		bra 		h1
 
 toConvert:
-		.text 		"0.00003167",0
+		.text 		"3842145.13",0
 
 ERR_Handler:
 		bra 		ERR_Handler

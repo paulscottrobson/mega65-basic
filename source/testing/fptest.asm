@@ -29,8 +29,8 @@ FPTNextLine:
 		jsr 	TIM_WriteHex
 		lda 	TIM_Irq
 		jsr 	TIM_WriteHex
-		jsr 	IFT_NewLine
-
+		lda 	#"."
+		jsr 	IFT_PrintCharacter
 		inc 	TIM_Irq
 		bne 	FPTLoop
 		inc 	TIM_Irq+1		
@@ -87,10 +87,9 @@ FPT_Compare:
 		bpl 	_FPTNotNeg
 		dey
 _FPTNotNeg:
-		jsr 	FPUSetBFromXY
-		ldx 	#B_Mantissa-A_Mantissa
+		jsr 	FPUSetAFromXY
+		ldx 	#0
 		jsr 	FPUToFloatX		
-		jsr 	FPUCopyBToA
 		bra 	FPTLoop		
 		;
 		;		= 				Equal as Floats ?
@@ -104,23 +103,25 @@ FPT_Equals:
 		;		Q 				Quit
 		;
 FPT_Exit:
-		;.byte 	$5C
-h1:		bra 	h1
+		lda 	#"*"
+		jsr 	IFT_PrintCharacter
+		.byte 	$5C
+FPT_Stop:bra 	FPT_Stop
 		;
-		;		C 				Copy B to A
+		;		C 				Copy A to B
 		;
 FPT_Copy:		
-		jsr 	FPUCopyBToA
+		jsr 	FPUCopyAToB
 		bra 	FPTLoop
 		;
-		;		L[xxxxx]		Load FP Constant.
+		;		L[xxxxx]		Load FP Constant into A
 		;
 FPT_Load:
 		jsr 	FPTGet 						; get the [ character
 		jsr 	FPAsciiToNumber
 		bcs 	FPT_Error
-		ldx 	#B_Mantissa-A_Mantissa		; make it float
-		jsr 	FPUToFloatX
+		ldx 	#0							; make it float
+		jsr 	FPUToFloatX		
 _FPTLoad1:
 		jsr 	FPTGet 						; find the ] character
 		cmp 	#"]"
