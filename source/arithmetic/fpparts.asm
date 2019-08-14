@@ -1,9 +1,10 @@
 ; *******************************************************************************************
 ; *******************************************************************************************
 ;
-;		Name : 		fppars.asm
+;		Name : 		fpparts.asm
 ;		Purpose :	Get Fractional/Integer part of a float.
 ;		Date :		11th August 2019
+;		Reviewed : 	14th August 2019 		(Review#1)
 ;		Author : 	Paul Robson (paul@robsons.org.uk)
 ;
 ; *******************************************************************************************
@@ -16,7 +17,7 @@
 ; *******************************************************************************************
 
 FPFractionalPart:
-		lda 	A_Exponent 					; if exponent -ve then then unchanged
+		lda 	A_Exponent 					; if exponent -ve then then unchanged as its fractional.
 		sec 								; this flag tells us to keep the fractional part
 		bpl 	FPGetPart
 		rts
@@ -28,7 +29,7 @@ FPFractionalPart:
 ; *******************************************************************************************
 
 FPIntegerPart:
-		lda 	A_Exponent 					; if exponent -ve then the result is zero.
+		lda 	A_Exponent 					; if exponent -ve then the result is zero (must be < 1.0)
 		clc 								; this flag says keep the integer part.
 		bpl 	FPGetPart
 		pha
@@ -46,13 +47,14 @@ FPIntegerPart:
 FPGetPart:
 		pha
 		phx 								; save X
-		lda 	A_Zero 						; if zero, return zero
+		;
+		lda 	A_Zero 						; if zero, return zero for int and frac
 		bne 	_FPGP_Exit 					; then do nothing.
+		;
 		php 								; save the action flag on the stack.
-
 		lda 	#$FF 						; set the mask long to -1
-		sta 	zLTemp1+0
-		sta 	zLTemp1+1
+		sta 	zLTemp1+0 					; this mask is applied to chop out the 
+		sta 	zLTemp1+1 					; bits you would keep/lose if it was exponent 32.
 		sta 	zLTemp1+2
 		sta 	zLTemp1+3
 		;
@@ -66,7 +68,7 @@ _FPGP_NotMax:
 		dex
 		bne 	_FPGP_NotMax
 _FPGP_NoShift:
-
+		;
 		ldx 	#3 							; now mask each part in turn.
 _FPGP_MaskLoop:
 		lda 	zlTemp1,x 					; get mask.
@@ -75,7 +77,7 @@ _FPGP_MaskLoop:
 		bcs		_FPGP_NoFlip
 		eor 	#$FF
 _FPGP_NoFlip:
-		and 	A_Mantissa,x
+		and 	A_Mantissa,x 				; and into the mantissa.
 		sta 	A_Mantissa,x
 		dex
 		bpl 	_FPGP_MaskLoop		
@@ -101,4 +103,3 @@ _FPGP_Exit:
 		plx
 		pla
 		rts
-

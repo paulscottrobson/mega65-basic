@@ -4,12 +4,13 @@
 ;		Name : 		fpdivide.asm
 ;		Purpose :	Divide B into A (floating point)
 ;		Date :		11th August 2019
+;		Reviewed : 	14th August 2019 		(Review#1)
 ;		Author : 	Paul Robson (paul@robsons.org.uk)
 ;
 ; *******************************************************************************************
 ; *******************************************************************************************
 
-FPD_IsDivZero:
+FPD_IsDivZero:								; here because of short branches
 		jsr 		ERR_Handler
 		.text 		"Division by zero",0
 
@@ -23,7 +24,8 @@ FPDivide:
 		pha
 		phx
 		lda 	B_Zero 						; check if division by zero
-		bne 	FPD_IsDivZero
+		bne 	FPD_IsDivZero 				; if B is zero, cause an error.
+		;
 		lda 	A_Zero 						; if 0/X (X is not zero) return 0
 		bne 	_FPD_Exit
 		;
@@ -31,9 +33,10 @@ FPDivide:
 		sec		
 		sbc 	B_Exponent
 		bpl 	_FPD_NoOverflow 			; check for overflow.
-		bvc 	_FPD_NoOverflow
+		bvc 	_FPD_NoOverflow 			; if -ve and overflow then exponent overflow.
 _FPD_Overflow:		
 		jmp 	FP_Overflow
+		;
 _FPD_NoOverflow:
 		clc 	 							; x 2, overflow if -ve
 		adc 	#1
@@ -48,8 +51,8 @@ _FPD_NoOverflow:
 		;
 		ldx 	#32 						; times round.
 _FPD_Loop:
-		sec 								; calculate A-B stacking result.
-		lda 	A_Mantissa+0
+		sec 								; calculate A-B stacking result because we might
+		lda 	A_Mantissa+0 				; not save it.
 		sbc 	B_Mantissa+0		
 		pha
 		lda 	A_Mantissa+1
@@ -60,7 +63,8 @@ _FPD_Loop:
 		pha
 		lda 	A_Mantissa+3
 		sbc 	B_Mantissa+3		
-		bcc		_FPD_NoSubtract 			; if CC couldn't subtract
+		;
+		bcc		_FPD_NoSubtract 			; if CC couldn't subtract without borrowing.
 		;
 		sta 	A_Mantissa+3 				; save results out to A
 		pla
@@ -83,7 +87,7 @@ _FPD_NoSubtract:
 _FPD_Rotates:
 		#lsr32 	B_Mantissa 					; shift B Mantissa right.
 
-		#asl32 	zLTemp1 					; rotate result left.
+		#asl32 	zLTemp1 					; rotate result left circularly.
 		bcc 	_FPD_NoCarry
 		inc 	zLTemp1 					; if rotated out, set LSB.
 _FPD_NoCarry:						
@@ -111,3 +115,4 @@ _FPD_Exit:
 		plx
 		pla		
 		rts
+

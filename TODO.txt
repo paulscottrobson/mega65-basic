@@ -1,9 +1,12 @@
 TODO
 ====
-- 	Code Review : Interface code, Floating Point multiply/divide and conversions.
-- 	Think about the tokenising format.
+- 	Code Review : Interface code, Floating Point conversions.
+- 	Think about the tokenising format - tokenise constants, identifiers as well as
+	keywords.
+- 	Working Python tokeniser.
 -	Write the expression evaluator
 - 	Write the basic executor and tokeniser and implement ASSERT.
+- 	variables defint a-z and # (real) % (int) $ (string)
 
 Fixes
 =====
@@ -15,5 +18,4 @@ Fixes
 		- Integer negation in fputils.asm
 		- Mantissa subtraction in fpdivide.asm
 -	FP guard byte on subtract ????
-
-		
+	
