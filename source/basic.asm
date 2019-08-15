@@ -28,7 +28,8 @@
 		.include 	"float/fpmultiply.asm"
 		.include 	"float/fpdivide.asm"
 		.include 	"float/fpcompare.asm"
-		
+		.include 	"float/fpparts.asm"
+
 StartROM:
 		ldx 	#$FF 						; empty stack
 		txs
@@ -37,7 +38,7 @@ StartROM:
 		jsr 	IFT_ClearScreen
 
 		jsr 	FPTTest		
-
+		
 		.if 	CPU=6502 					; exit on emulator
 		.byte 	$5C
 		.endif
@@ -53,4 +54,5 @@ NMIHandler:
 		.word	NMIHandler
 		.word 	StartROM
 		.word 	TIM_BreakVector
+
 

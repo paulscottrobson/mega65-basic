@@ -77,24 +77,12 @@ sub32x 	.macro 								; subtract \2 from \1
 		sta 	\1+3,x
 		.endm
 
-; *******************************************************************************************
-
-iszero32 .macro
-		lda 	\1 							; check if \1 zero
-		ora 	\1+1
-		ora 	\1+2
-		ora 	\1+3
+iszero32x .macro
+		lda 	\1,x 						; check if \1 zero
+		ora 	\1+1,x
+		ora 	\1+2,x
+		ora 	\1+3,x
 		.endm
-
-
-
-
-asl32 	.macro 								; asl32 \1
-		asl 	0+\1
-		rol 	1+\1
-		rol 	2+\1
-		rol 	3+\1
-		.endm		
 
 lsr32 	.macro 								; lsr32 \1
 		lsr 	3+\1
@@ -102,24 +90,4 @@ lsr32 	.macro 								; lsr32 \1
 		ror 	1+\1
 		ror 	0+\1
 		.endm		
-
-
-
-
-fpush 	.macro 								; push 8 byte value on 6502 stack
-		ldx 	#0
-_F1:	lda 	\1,x
-		pha
-		inx
-		cpx 	#8
-		bne 	_F1
-		.endm
-
-fpull 	.macro 								; pull 8 byte value off 6502 stack.
-		ldx 	#7
-_F2:	pla
-		sta 	\1,x
-		dex
-		bpl		_F2
-		.endm
 

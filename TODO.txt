@@ -1,7 +1,6 @@
 TODO
 ====
 - 	XPort
-			integer/fractional and test.
 			convert int then float conversions
 			
 - 	Think about the tokenising format - tokenise constants, identifiers as well as
