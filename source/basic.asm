@@ -29,6 +29,8 @@
 		.include 	"float/fpdivide.asm"
 		.include 	"float/fpcompare.asm"
 		.include 	"float/fpparts.asm"
+		.include 	"integer/inttostr.asm"
+		.include 	"integer/intfromstr.asm"
 
 StartROM:
 		ldx 	#$FF 						; empty stack
@@ -37,12 +39,20 @@ StartROM:
 		jsr 	IF_Reset 					; reset external interface
 		jsr 	IFT_ClearScreen
 
-		jsr 	FPTTest		
-		
+		jsr 	FPTTest
+		ldx 	#6
+		lda 	#Source & $FF
+		sta 	zGenPtr
+		lda 	#Source >> 8
+		sta 	zGenPtr+1
+		jsr 	INTFromString
+
 		.if 	CPU=6502 					; exit on emulator
 		.byte 	$5C
 		.endif
 freeze:	bra 	freeze		
+
+Source:	.text 	"1234576",0
 
 ERR_Handler:
 		bra 	ERR_Handler

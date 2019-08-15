@@ -47,6 +47,11 @@ XS2_Type = XS_Type+6
 
 		* = $400
 
+Num_Buffer	.fill 	32 						; buffer for numeric conversions
+NumBufX 	.byte 	?						; buffer index position
+NumSuppress	.byte 	?						; leading zero suppression flag
+NumConvCount .byte 	? 						; count for conversions.
+
 Tim_PC:		.word ?							; program counter on BRK (Hi/Lo order)
 Tim_IRQ:	.word ?							; IRQ Vector (Hi/Lo order)
 Tim_SR:		.byte ? 						; Processor Status
