@@ -29,6 +29,47 @@ ror32x 	.macro 								; ror32 \1,x
 		ror 	0+\1,x
 		.endm		
 
+inx6 	.macro 								; add 6 to x
+		inx
+		inx
+		inx
+		inx
+		inx
+		inx
+		.endm
+
+add32x 	.macro 								; add \2 to \1
+		clc
+		lda 	\1+0,x
+		adc 	\2+0,x
+		sta 	\1+0,x
+		lda 	\1+1,x
+		adc 	\2+1,x
+		sta 	\1+1,x
+		lda 	\1+2,x
+		adc 	\2+2,x
+		sta 	\1+2,x
+		lda 	\1+3,x
+		adc 	\2+3,x
+		sta 	\1+3,x
+		.endm
+
+sub32x 	.macro 								; subtract \2 from \1
+		sec
+		lda 	\1+0,x
+		sbc 	\2+0,x
+		sta 	\1+0,x
+		lda 	\1+1,x
+		sbc 	\2+1,x
+		sta 	\1+1,x
+		lda 	\1+2,x
+		sbc 	\2+2,x
+		sta 	\1+2,x
+		lda 	\1+3,x
+		sbc 	\2+3,x
+		sta 	\1+3,x
+		.endm
+
 ; *******************************************************************************************
 
 iszero32 .macro
@@ -38,37 +79,7 @@ iszero32 .macro
 		ora 	\1+3
 		.endm
 
-add32 	.macro 								; add \2 to \1
-		clc
-		lda 	\1+0
-		adc 	\2+0
-		sta 	\1+0
-		lda 	\1+1
-		adc 	\2+1
-		sta 	\1+1
-		lda 	\1+2
-		adc 	\2+2
-		sta 	\1+2
-		lda 	\1+3
-		adc 	\2+3
-		sta 	\1+3
-		.endm
 
-sub32 	.macro 								; subtract \2 from \1
-		sec
-		lda 	\1+0
-		sbc 	\2+0
-		sta 	\1+0
-		lda 	\1+1
-		sbc 	\2+1
-		sta 	\1+1
-		lda 	\1+2
-		sbc 	\2+2
-		sta 	\1+2
-		lda 	\1+3
-		sbc 	\2+3
-		sta 	\1+3
-		.endm
 
 
 asl32 	.macro 								; asl32 \1
