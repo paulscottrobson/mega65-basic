@@ -13,6 +13,9 @@
 		nop
 		.include 	"data.asm"
 
+		* = $8000
+		.text 		"Hello, tim !"
+
 		* = $A000
 		.include 	"utility/tim.asm"
 		
@@ -44,7 +47,7 @@ StartROM:
 
 		jsr 	IF_Reset 					; reset external interface
 		jsr 	IFT_ClearScreen
-
+		jmp 	TIM_Start
 		jsr 	FPTTest
 ;		lda 	#0
 ;		sta 	NumBufX

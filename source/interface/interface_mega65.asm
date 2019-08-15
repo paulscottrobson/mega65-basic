@@ -250,9 +250,11 @@ _EXTCopyCBMFont:
 		sta 	$01
 
 		lda 	#$00						; do not map bytes 0000-7FFF
-		ldx 	#$00
-		ldy 	#$00 						; 8000-FFFF offset by $2000
-		ldz 	#$F2
+		ldx 	#$00						; (so we use the RAM physically at $0000-$7FFF)
+
+		ldy 	#$00 						; 8000-FFFF offset by $200. The lower 8 bits are $00
+		ldz 	#$F2 						; so this is an actual offset of $20000. So the space at
+											; 8000-FFFF is mapped to 28000-2FFFF.
 		map
 		eom
 
