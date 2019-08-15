@@ -12,16 +12,11 @@
 		* = $0000
 		nop
 		.include 	"data.asm"
+
 		* = $A000
-		.if 		INTERFACE=1
-		.include 	"interface/interface_emu.asm"
-		.else
-		.include 	"interface/interface_mega65.asm"
-		.endif
-		;
-		.include 	"interface/interface_tools.asm"
 		.include 	"utility/tim.asm"
-		.include 	"testing/fptest.asm"	
+		
+		* = $C000
 		.include 	"integer/inttostr.asm"
 		.include 	"integer/intfromstr.asm"
 		.include 	"float/fpmacros.asm"
@@ -34,6 +29,15 @@
 		.include 	"float/fpfromstr.asm"
 		.include 	"float/fptostr.asm"
 
+		* = $E000
+		.if 		INTERFACE=1
+		.include 	"interface/interface_emu.asm"
+		.else
+		.include 	"interface/interface_mega65.asm"
+		.endif
+		;
+		.include 	"interface/interface_tools.asm"
+
 StartROM:
 		ldx 	#$FF 						; empty stack
 		txs
@@ -42,10 +46,10 @@ StartROM:
 		jsr 	IFT_ClearScreen
 
 		jsr 	FPTTest
-		lda 	#0
-		sta 	NumBufX
-		ldx 	#6
-		jsr 	FPToString
+;		lda 	#0
+;		sta 	NumBufX
+;		ldx 	#6
+;		jsr 	FPToString
 		.if 	CPU=6502 					; exit on emulator
 		.byte 	$5C
 		.endif
@@ -56,6 +60,8 @@ ERR_Handler:
 
 NMIHandler:
 		rti
+
+		.include 	"testing/fptest.asm"	
 
 		* = $FFFA
 		.word	NMIHandler

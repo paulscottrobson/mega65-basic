@@ -3,8 +3,8 @@
 #
 rm dump.mem memory.dump uart.sock
 pushd scripts
-#python ftestgen.py >../testing/script.inc
-python fscript.py >../testing/script.inc
+python ftestgen.py >../testing/script.inc
+#python fscript.py >../testing/script.inc
 popd
 pushd ../emulator
 sh build.sh

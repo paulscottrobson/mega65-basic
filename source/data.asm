@@ -15,7 +15,7 @@
 ;
 ; *******************************************************************************************
 
-		* = $10
+		* = $10 							; 0-1 is mapping, 2-F is reserved for i/f.
 
 zTemp1:		.word ?							; temporary pointers
 zTemp2:		.word ?
@@ -23,6 +23,19 @@ zTemp3:		.word ?
 
 zLTemp1:	.dword ?						; long word (used in multiply)
 zGenPtr:	.word ? 						; general pointer.
+
+		* = $200
+
+; *******************************************************************************************
+;
+;							Memory used by the Interface Tools
+;
+; *******************************************************************************************
+
+IFT_XCursor:.byte ?							; current logical position on screen
+IFT_YCursor:.byte ?
+IFT_Buffer:	.fill 100 						; scroll copy buffer.
+IFT_LineBuffer: .fill 100 					; line input buffer.
 
 ; *******************************************************************************************
 ;

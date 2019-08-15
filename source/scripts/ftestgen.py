@@ -73,6 +73,6 @@ class FPTest(object):
 if __name__ == "__main__":
 	test = FPTest()
 	#test.setOperators("-")
-	for i in range(0,800):
+	for i in range(0,200):
 		test.generateTest(i)
 	test.target.integer(99999)
