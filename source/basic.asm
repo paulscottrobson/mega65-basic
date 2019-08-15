@@ -32,6 +32,7 @@
 		.include 	"float/fpcompare.asm"
 		.include 	"float/fpparts.asm"
 		.include 	"float/fpfromstr.asm"
+		.include 	"float/fptostr.asm"
 
 StartROM:
 		ldx 	#$FF 						; empty stack
@@ -41,20 +42,14 @@ StartROM:
 		jsr 	IFT_ClearScreen
 
 		jsr 	FPTTest
+		lda 	#0
+		sta 	NumBufX
 		ldx 	#6
-		lda 	#Source & $FF
-		sta 	zGenPtr
-		lda 	#Source >> 8
-		sta 	zGenPtr+1
-		jsr 	IntFromString
-x1:		bcs 	x1
-		jsr 	FPFromString
+		jsr 	FPToString
 		.if 	CPU=6502 					; exit on emulator
 		.byte 	$5C
 		.endif
 freeze:	bra 	freeze		
-
-Source:	.text 	"1.234678e-3",0
 
 ERR_Handler:
 		bra 	ERR_Handler

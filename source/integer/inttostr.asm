@@ -2,7 +2,7 @@
 ; *******************************************************************************************
 ;
 ;		Name : 		inttostr.asm
-;		Purpose :	Convert integer to string.
+;		Purpose :	Convert integer to string at current buffer position
 ;		Date :		15th August 2019
 ;		Author : 	Paul Robson (paul@robsons.org.uk)
 ;

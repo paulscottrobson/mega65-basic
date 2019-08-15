@@ -1,8 +1,5 @@
 TODO
 ====
-- 	XPort
-			float->string conversion.
-			
 - 	Think about the tokenising format - tokenise constants, identifiers as well as
 	keywords.
 - 	Working Python tokeniser.

@@ -289,3 +289,39 @@ _FPUSDivide:
 _FPUScaleExit:		
 		ply
 		rts
+
+; *******************************************************************************************
+;
+;								Copy TOS to next empty slot
+;
+; *******************************************************************************************
+
+FPUCopyToNext:
+		ldy 		#6
+		phx
+_FPUCopy1:
+		lda 	XS_Mantissa,x
+		sta 	XS2_Mantissa,x
+		inx
+		dey
+		bne 	_FPUCopy1
+		plx
+		rts
+
+; *******************************************************************************************
+;
+;								Copy TOS from next empty slot
+;
+; *******************************************************************************************
+
+FPUCopyFromNext:
+		ldy 		#6
+		phx
+_FPUCopy1:
+		lda 	XS2_Mantissa,x
+		sta 	XS_Mantissa,x
+		inx
+		dey
+		bne 	_FPUCopy1
+		plx
+		rts

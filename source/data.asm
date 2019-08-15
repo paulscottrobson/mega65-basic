@@ -62,3 +62,4 @@ Tim_Z:		.byte ?
 Tim_SP:		.byte ?							; Stack Pointer
 
 ExpTemp:	.byte ?							; Working temp for exponents.
+ExpCount:	.byte ? 						; Count of decimal exponents.
