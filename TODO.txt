@@ -1,7 +1,7 @@
 TODO
 ====
 - 	XPort
-			convert int then float conversions
+			float->string conversion.
 			
 - 	Think about the tokenising format - tokenise constants, identifiers as well as
 	keywords.

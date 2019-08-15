@@ -22,6 +22,8 @@
 		.include 	"interface/interface_tools.asm"
 		.include 	"utility/tim.asm"
 		.include 	"testing/fptest.asm"	
+		.include 	"integer/inttostr.asm"
+		.include 	"integer/intfromstr.asm"
 		.include 	"float/fpmacros.asm"
 		.include 	"float/fputils.asm"
 		.include 	"float/fpadd.asm"
@@ -29,8 +31,7 @@
 		.include 	"float/fpdivide.asm"
 		.include 	"float/fpcompare.asm"
 		.include 	"float/fpparts.asm"
-		.include 	"integer/inttostr.asm"
-		.include 	"integer/intfromstr.asm"
+		.include 	"float/fpfromstr.asm"
 
 StartROM:
 		ldx 	#$FF 						; empty stack
@@ -45,14 +46,15 @@ StartROM:
 		sta 	zGenPtr
 		lda 	#Source >> 8
 		sta 	zGenPtr+1
-		jsr 	INTFromString
-
+		jsr 	IntFromString
+x1:		bcs 	x1
+		jsr 	FPFromString
 		.if 	CPU=6502 					; exit on emulator
 		.byte 	$5C
 		.endif
 freeze:	bra 	freeze		
 
-Source:	.text 	"1234576",0
+Source:	.text 	"1.234678e-3",0
 
 ERR_Handler:
 		bra 	ERR_Handler

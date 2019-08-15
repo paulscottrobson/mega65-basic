@@ -89,7 +89,6 @@ _IFSOkay:
 		clc
 _IFSSkipFail:		
 		pla 								; and exit.
-		nop
 		rts
 
 _IFSOverflow:

@@ -243,3 +243,49 @@ _FPUT_LSR_ZLTemp1:
 		ror 	ZLTemp1+0
 		rts
 
+; *******************************************************************************************
+;
+;								Scale current expression TOS by 10^AC
+;
+; *******************************************************************************************
+
+FPUScale10A:
+		phy
+		cmp 	#0 							; if A = 0, nothing to scale
+		beq 	_FPUScaleExit
+		phx 								; save X
+		inx6 								; next slot in expression stack.
+		tay 								; save power scalar in Y.
+		lda 	#0
+		sta 	XS_Mantissa+0,x 			; set slot to 1.0		
+		sta 	XS_Mantissa+1,x
+		sta 	XS_Mantissa+2,x
+		sta 	XS_Type,x
+		lda 	#$80
+		sta 	XS_Mantissa+3,x
+		lda 	#$81
+		sta 	XS_Exponent,x
+		;
+		phy 								; save 10^n on stack.
+		cpy 	#0
+		bpl 	_FPUSAbs 					; set Y = |Y|, we want to multiply that 1.0 x 10		
+		tya
+		eor 	#$FF
+		inc 	a
+		tay
+_FPUSAbs:
+		jsr 	FPUTimes10 
+		dey
+		bne 	_FPUSAbs 					; tos is now 10^|AC|
+		;
+		pla 								; restore count in A
+		plx 								; restore X pointing to number to scale.
+		asl 	a 
+		bcs 	_FPUSDivide 				; if bit 7 of count set, divide
+		jsr 	FPMultiply 					; if clear multiply.
+		bra		_FPUScaleExit
+_FPUSDivide:
+		jsr 	FPDivide
+_FPUScaleExit:		
+		ply
+		rts
