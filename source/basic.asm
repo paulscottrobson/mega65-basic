@@ -21,47 +21,29 @@
 		;
 		.include 	"interface/interface_tools.asm"
 		.include 	"utility/tim.asm"
-		.include 	"arithmetic/fpmacros.asm"
-		.include 	"arithmetic/fputils.asm"
-		.include 	"arithmetic/fpadd.asm"
-		.include 	"arithmetic/fpmultiply.asm"
-		.include 	"arithmetic/fpdivide.asm"
-		.include 	"arithmetic/fpparts.asm"
-		.include 	"arithmetic/inttostr.asm"
-		.include 	"arithmetic/fptostr.asm"
-		.include 	"arithmetic/intfromstr.asm"
-		.include 	"arithmetic/fpfromstr.asm"
+		.include 	"testing/fptest.asm"	
 
 StartROM:
-		ldx 		#$FF 					; empty stack
+		ldx 	#$FF 						; empty stack
 		txs
 
-		jsr 		IF_Reset 				; reset external interface
-		jsr 		IFT_ClearScreen
+		jsr 	IF_Reset 					; reset external interface
+		jsr 	IFT_ClearScreen
 
-		.include 	"testing/fptest.asm"
-
-		lda 		#toConvert & $FF 		
-		sta 		zGenPtr
-		lda 		#toConvert >> 8
-		sta 		zGenPtr+1
-		jsr 		INTFromString			; grab an integer
-err1:	bcs 		err1		
-		jsr 		FPFromString  			; maybe extend as decimal.
-		jsr 		FPToString 				; convert to string.
-		.byte 		$5C
-h1:		bra 		h1
-
-toConvert:
-		.text 		"0.2",0
+		jsr 	FPTTest		
+		.if 	CPU=6502 					; exit on emulator
+		.byte 	$5C
+		.endif
+freeze:	bra 	freeze		
 
 ERR_Handler:
-		bra 		ERR_Handler
+		bra 	ERR_Handler
 
 NMIHandler:
 		rti
+
 		* = $FFFA
-		.word		NMIHandler
-		.word 		StartROM
-		.word 		TIM_BreakVector
+		.word	NMIHandler
+		.word 	StartROM
+		.word 	TIM_BreakVector
 

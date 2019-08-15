@@ -26,7 +26,7 @@
 //														CPU / Memory
 // *******************************************************************************************************************************
 
-static BYTE8 A,X,Y,Z,tmp8;															// 6502 A,X,Y and Stack registers
+static BYTE8 A,X,Y,Z,tmp8,halt;														// 6502 A,X,Y and Stack registers
 static BYTE8 C_FLAG,I_FLAG,B_FLAG,E_FLAG,											// Values representing status reg
 			 D_FLAG,V_FLAG,Z_FLAG,N_FLAG;
 static WORD16 PC,temp16,MAR,MBR,SP;													// Program Counter.
@@ -70,6 +70,7 @@ static void resetProcessor(void) {
 	I_FLAG = 1;
 	D_FLAG = 0;
 	E_FLAG = 0;
+	halt = 0;
 }
 
 void CPUReset(void) {
@@ -86,11 +87,14 @@ void CPUReset(void) {
 // *******************************************************************************************************************************
 
 BYTE8 CPUExecuteInstruction(void) {
-	FETCH8();																		// Fetch opcode.
-	switch(MBR) {																	// Execute it.
-		#include "processor/cpu_opcodes.h"
+	if (halt == 0) { 					
+		FETCH8();																	// Fetch opcode.
+		switch(MBR) {																// Execute it.
+			#include "processor/cpu_opcodes.h"
+		}
 	}
 	cycles = cycles + 4;
+	if (halt != 0) return FRAME_RATE;
 	if (cycles < CYCLES_PER_FRAME) return 0;										// Not completed a frame.
 	cycles = cycles - CYCLES_PER_FRAME;												// Adjust this frame rate.
 	ramMemory[0x8801] = (GFXIsKeyPressed(GFXKEY_CONTROL) && GFXIsKeyPressed('C')) ? 1 : 0;
