@@ -1,6 +1,11 @@
 TODO
 ====
-- 	Code Review : Interface code, Floating Point conversions.
+- 	XPort
+			compare
+			make the testing script work (binary actions pop), add equality check.
+			integer/fractional and test.
+			convert int then float conversions
+			
 - 	Think about the tokenising format - tokenise constants, identifiers as well as
 	keywords.
 - 	Working Python tokeniser.

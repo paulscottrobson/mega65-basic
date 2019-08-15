@@ -124,7 +124,8 @@ FPUNormalise:
 		pha
 		bit 	XS_Type,x 					; if float-zero, don't need to normalise it.
 		bvs 	_FPUNExit
-
+		lda 	XS_Exponent,x 				; if exponent is zero, then make it zero.
+		beq 	_FPUNSetZero
 _FPUNLoop:
 		lda 	XS_Mantissa+3,x 			; bit 31 of mantissa set.
 		bmi 	_FPUNExit 					; if so, we are normalised.
@@ -134,12 +135,13 @@ _FPUNLoop:
 		dec 	XS_Exponent,x 				; decrement exponent
 		bne 	_FPUNLoop 		 			; go round again until bit 31 set.
 		;
+_FPUNSetZero:
 		lda 	#$40
 		sta 	XS_Type,x 					; the result is now zero.
 _FPUNExit:
 		pla
 		rts
-
+			
 ; *******************************************************************************************
 ;
 ;								Convert Float to Integer

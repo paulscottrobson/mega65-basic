@@ -56,6 +56,6 @@ class FScriptCompiler(object):
 if __name__ == "__main__":
 	fc = FScriptCompiler()
 	fc.float(99.94)
-	fc.float(0)
-	fc.float(-111)
+	fc.float(1000)
+	fc.float(0.1)
 	fc.end()

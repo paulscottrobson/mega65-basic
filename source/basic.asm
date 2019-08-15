@@ -25,6 +25,8 @@
 		.include 	"float/fpmacros.asm"
 		.include 	"float/fputils.asm"
 		.include 	"float/fpadd.asm"
+		.include 	"float/fpmultiply.asm"
+		.include 	"float/fpdivide.asm"
 
 StartROM:
 		ldx 	#$FF 						; empty stack
@@ -36,7 +38,7 @@ StartROM:
 		jsr 	FPTTest		
 
 		ldx 	#6
-		jsr 	FPAdd
+		jsr 	FPDivide
 
 		.if 	CPU=6502 					; exit on emulator
 		.byte 	$5C

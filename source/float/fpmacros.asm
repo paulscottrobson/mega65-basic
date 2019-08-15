@@ -29,6 +29,13 @@ ror32x 	.macro 								; ror32 \1,x
 		ror 	0+\1,x
 		.endm		
 
+ror32 	.macro 								; ror32 \1
+		ror 	3+\1
+		ror 	2+\1
+		ror 	1+\1
+		ror 	0+\1
+		.endm		
+
 inx6 	.macro 								; add 6 to x
 		inx
 		inx
@@ -97,12 +104,6 @@ lsr32 	.macro 								; lsr32 \1
 		.endm		
 
 
-ror32 	.macro 								; ror32 \1
-		ror 	3+\1
-		ror 	2+\1
-		ror 	1+\1
-		ror 	0+\1
-		.endm		
 
 
 fpush 	.macro 								; push 8 byte value on 6502 stack
