@@ -75,7 +75,7 @@ static void sub8Bit(void);
 #define OPC_CPZ()		C_FLAG = 1;sub8Bit(Z)
 #define OPC_SBC()		sub8Bit(A);A = MBR
 
-#define OPC_BIT()		N_FLAG = (MBR >> 7) & 1;V_FLAG = (MBR >> 6) * 1;Z_FLAG = ((A & MBR) == 0) ? 1 : 0
+#define OPC_BIT()		N_FLAG = (MBR >> 7) & 1;V_FLAG = (MBR >> 6) & 1;Z_FLAG = ((A & MBR) == 0) ? 1 : 0
 
 #define OPC_ASL()		C_FLAG = (MBR >> 7) & 1;MBR = (MBR << 1) & 0xFF;SETNZ(MBR)
 #define OPC_ASR()		C_FLAG = MBR & 1;MBR = ((MBR >> 1) & 0x7F)|(MBR & 0x80);SETNZ(MBR)

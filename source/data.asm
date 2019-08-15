@@ -40,6 +40,8 @@ XS_Type 	.byte ? 						; bit 7 sign (float only)
 											; bit 1 string flag
 											; bit 0 integer flag.
 											; float type when all type bits 0-3 are zero.
+
+
 		* = $400
 
 Tim_PC:		.word ?							; program counter on BRK (Hi/Lo order)

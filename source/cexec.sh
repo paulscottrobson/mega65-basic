@@ -1,7 +1,7 @@
 #
 #		Build BASIC (EM4510)
 #
-rm dump.mem memory.dump
+rm dump.mem memory.dump uart.sock
 pushd scripts
 python fscript.py >../testing/script.inc
 popd

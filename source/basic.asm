@@ -22,6 +22,8 @@
 		.include 	"interface/interface_tools.asm"
 		.include 	"utility/tim.asm"
 		.include 	"testing/fptest.asm"	
+		.include 	"float/fpmacros.asm"
+		.include 	"float/fputils.asm"
 
 StartROM:
 		ldx 	#$FF 						; empty stack
@@ -31,6 +33,12 @@ StartROM:
 		jsr 	IFT_ClearScreen
 
 		jsr 	FPTTest		
+
+		ldx 	#6
+		jsr 	FPUToFloat 					
+		;jsr 	FPUToInteger
+		jsr 	FPUTimes10
+
 		.if 	CPU=6502 					; exit on emulator
 		.byte 	$5C
 		.endif
