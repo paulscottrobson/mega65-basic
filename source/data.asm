@@ -56,3 +56,4 @@ Tim_Y:		.byte ?
 Tim_Z:		.byte ?
 Tim_SP:		.byte ?							; Stack Pointer
 
+ExpTemp:	.byte ?							; Working temp for exponents.

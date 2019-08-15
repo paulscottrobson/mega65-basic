@@ -27,7 +27,8 @@
 		.include 	"float/fpadd.asm"
 		.include 	"float/fpmultiply.asm"
 		.include 	"float/fpdivide.asm"
-
+		.include 	"float/fpcompare.asm"
+		
 StartROM:
 		ldx 	#$FF 						; empty stack
 		txs

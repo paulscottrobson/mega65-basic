@@ -1,8 +1,6 @@
 TODO
 ====
 - 	XPort
-			compare code ported.
-			add equality check and comparison check
 			write some test code.
 			integer/fractional and test.
 			convert int then float conversions

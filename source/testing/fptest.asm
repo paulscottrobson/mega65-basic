@@ -43,10 +43,14 @@ FPTLoop:lda 	zGenPtr+1
 		beq 	FPTExit
 		cmp 	#1 							; 1,load
 		beq 	FPTLoad
-		#check 	"+",FPAdd
+		#check 	"+",FPAdd 					; binary operations.
 		#check 	"-",FPSubtract
 		#check 	"*",FPMultiply
 		#check 	"/",FPDivide
+		cmp 	#"~" 						; ~, compare
+		beq 	FPTCompare
+		cmp 	#"="						; = check equal
+		beq 	FPTCheck
 FPTError:
 		bra 	FPTError
 		;
@@ -68,7 +72,27 @@ FPTExit:
 		lda 	#42
 		jsr 	IFT_PrintCharacter
 		rts
-
+		;
+		;		~ Compare top two values
+		;
+FPTCompare:
+		jsr 	FPT_Preamble
+		jsr 	FPCompare
+		jsr 	FPUSetInteger
+		jsr 	FPUToFloat
+		jsr 	FPT_Postamble
+		jmp 	FPTLoop		
+		;
+		;		= Check top two values equal
+		;
+FPTCheck:		
+		jsr 	FPT_Preamble
+		jsr 	FPCompare
+		ora 	#0
+_FPTCFail:		
+		bne 	_FPTCFail
+		jsr 	FPT_Postamble
+		jmp 	FPTLoop		
 		;
 		;		Before calling FP calculation, do this
 		;
