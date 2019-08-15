@@ -83,7 +83,7 @@ FPTCompare:
 		jsr 	FPT_Postamble
 		jmp 	FPTLoop		
 		;
-		;		= Check top two values equal
+		;		= Check top two values equal, stop if not, throw away TOS.
 		;
 FPTCheck:		
 		jsr 	FPT_Preamble
@@ -91,7 +91,6 @@ FPTCheck:
 		ora 	#0
 _FPTCFail:		
 		bne 	_FPTCFail
-		jsr 	FPT_Postamble
 		jmp 	FPTLoop		
 		;
 		;		Before calling FP calculation, do this

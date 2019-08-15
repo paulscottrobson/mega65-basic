@@ -43,7 +43,7 @@ FPCompare:
 		;
 		sec
 		lda 	ExpTemp 					; get one of the exponents back.
-		sbc 	#22 						; allow for 2^22 error, relatively.	
+		sbc 	#24 						; allow for 2^24 error, relatively.	
 		bcs 	_FPCNotRange 				; keep in range.
 		lda 	#1 							
 _FPCNotRange:		

@@ -104,8 +104,8 @@ _FPAW_BNegative:
 		#sub32x	XS_Mantissa,XS2_Mantissa 	; difference.
 		bcs		_FPAWGoExit 				; no borrow, e.g. the result is positive.	
 		jsr 	FPUNegateInteger			; negate the mantissa
-		lda 	XS_Type 					; flip result sign
+		lda 	XS_Type,x 					; flip result sign
 		eor 	#$80
-		sta 	XS_Type
+		sta 	XS_Type,x
 _FPAWGoExit:		
 		jmp 	_FPAWExit

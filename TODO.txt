@@ -1,7 +1,6 @@
 TODO
 ====
 - 	XPort
-			write some test code.
 			integer/fractional and test.
 			convert int then float conversions
 			
@@ -14,7 +13,6 @@ TODO
 
 Fixes
 =====
--  	Experiment with the FPCompare code to check the error range for equality.
 - 	Proper insert/delete in line editing.
 - 	Add X to Monitor (warm start BASIC)
 - 	FP optimisations for 4510 extended.
