@@ -18,7 +18,7 @@
 //														   Timing
 // *******************************************************************************************************************************
 
-#define CYCLE_RATE 		(2*1000*1000)												// Cycles per second (0.96Mhz)
+#define CYCLE_RATE 		(8*1000*1000)												// Cycles per second (0.96Mhz)
 #define FRAME_RATE		(60)														// Frames per second (50 arbitrary)
 #define CYCLES_PER_FRAME (CYCLE_RATE / FRAME_RATE)									// Cycles per frame (20,000)
 
@@ -93,7 +93,7 @@ BYTE8 CPUExecuteInstruction(void) {
 			#include "processor/cpu_opcodes.h"
 		}
 	}
-	cycles = cycles + 4;
+	cycles = cycles + 4;															// Well, it's not perfect :)
 	if (halt != 0) return FRAME_RATE;
 	if (cycles < CYCLES_PER_FRAME) return 0;										// Not completed a frame.
 	cycles = cycles - CYCLES_PER_FRAME;												// Adjust this frame rate.

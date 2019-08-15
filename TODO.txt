@@ -1,8 +1,9 @@
 TODO
 ====
 - 	XPort
-			compare
-			make the testing script work (binary actions pop), add equality check.
+			compare code ported.
+			add equality check and comparison check
+			write some test code.
 			integer/fractional and test.
 			convert int then float conversions
 			

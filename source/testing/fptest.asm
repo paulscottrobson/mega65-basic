@@ -3,11 +3,22 @@
 ;
 ;		Name : 		fptest.asm
 ;		Purpose :	Runs floating point script code, used in testing.
+;					(not normally included in the binary)
 ;		Date :		15th August 2019
 ;		Author : 	Paul Robson (paul@robsons.org.uk)
 ;
 ; *******************************************************************************************
 ; *******************************************************************************************
+
+check:	.macro								; binary operators, except Compare which returns
+		cmp 	#\1 						; the -1/0/1 value in AC.
+		bne 	_skip1
+		jsr 	FPT_Preamble
+		jsr 	\2
+		jsr 	FPT_Postamble
+		bra 	FPTLoop
+_skip1:
+		.endm
 
 ; *******************************************************************************************
 ;
@@ -21,11 +32,21 @@ FPTTest:
 		lda 	#FPTTestData >> 8
 		sta 	zGenPtr+1
 		ldx 	#0 							; start at stack bottom.
-FPTLoop:jsr 	FPTGet 						; get next command
+FPTLoop:lda 	zGenPtr+1
+		jsr 	TIM_WriteHex
+		lda 	zGenPtr
+		jsr 	TIM_WriteHex
+		lda 	#"."
+		jsr		IFT_PrintCharacter
+		jsr 	FPTGet 						; get next command
 		cmp 	#0 							; zero, exit
 		beq 	FPTExit
 		cmp 	#1 							; 1,load
 		beq 	FPTLoad
+		#check 	"+",FPAdd
+		#check 	"-",FPSubtract
+		#check 	"*",FPMultiply
+		#check 	"/",FPDivide
 FPTError:
 		bra 	FPTError
 		;
@@ -44,6 +65,27 @@ _FPTLoadLoop:
 		;		0 which is stop (XEmu, Hardware) exit (emulator)
 		;
 FPTExit:		
+		lda 	#42
+		jsr 	IFT_PrintCharacter
+		rts
+
+		;
+		;		Before calling FP calculation, do this
+		;
+FPT_Preamble:
+		txa
+		sec
+		sbc 	#12
+		tax
+		rts
+		;
+		;		After calling FP calculation , do this.
+		;
+FPT_Postamble:
+		txa
+		clc
+		adc 	#6
+		tax
 		rts
 
 ; *******************************************************************************************
@@ -73,3 +115,4 @@ _FPTGet1:
 FPTTestData:
 		.include "script.inc"
 		.byte 	0		
+

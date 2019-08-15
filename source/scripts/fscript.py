@@ -2,7 +2,7 @@
 # *******************************************************************************************
 #
 #		Name : 		fscript.py
-#		Purpose :	Floating Point Script Compiler
+#		Purpose :	Floating Point Script Compiler. Like a simple RPN calculator.
 #		Date :		15th August 2019
 #		Author : 	Paul Robson (paul@robsons.org.uk)
 #
@@ -56,6 +56,9 @@ class FScriptCompiler(object):
 if __name__ == "__main__":
 	fc = FScriptCompiler()
 	fc.float(99.94)
-	fc.float(1000)
-	fc.float(0.1)
+	fc.float(1000.15)
+	fc.float(12.1)
+	fc.command("+")
+	fc.float(1012.25)
+	fc.command("-")
 	fc.end()

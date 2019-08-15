@@ -37,9 +37,6 @@ StartROM:
 
 		jsr 	FPTTest		
 
-		ldx 	#6
-		jsr 	FPDivide
-
 		.if 	CPU=6502 					; exit on emulator
 		.byte 	$5C
 		.endif
