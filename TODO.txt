@@ -1,7 +1,5 @@
 TODO
 ====
-- 	Think about the tokenising format - tokenise constants, identifiers as well as
-	keywords.
 - 	Working Python tokeniser.
 -	Write the expression evaluator
 - 	Write the basic executor and tokeniser and implement ASSERT.
@@ -18,25 +16,35 @@ Fixes
 -	FP guard byte on subtract ????
 
 
-0000		End
-0001 		Colon token
-10 xx 		String total length xx (ASCIIZ)
-11 xx 		decimal/exponential sequence nnnnne[-]nnn length xx (ASCIIZ)
-20-3F 		001a tttt followed by identifier bit 7 continuation ASCII.
-40-7F  		3Fxx shift. decimals.
-80-FB 		tokens
-FC-FF xx 	shifted tokens.
+Tokenising
+==========
 
-* / mode and or xor + - >> << > >= < <= = <>
+00		End
+01-3F 	PETSCII (identifiers mostly)
+40-7F 	Encoded 6 bit integers (can be chained)
+80-FB 	Basic tokens
+FC-FD	Token shifts (to 80-FB only)
+FE xx 	ASCIIZ decimal sequence
+FF xx 	ASCIIZ string sequence
 
-Hi-Lo order
+Token order
 ===========
+Binary operators 	- Precedence look up table
+Unary functions 	- LEN ABS SGN RND etc.
+Syntax Elements 	- things that are used as regular syntax items , ; etc.
+Syntax + 			- things that open a structure while repeat if for
+Syntax - 			- things that close a structure wend until then endif next
 
-0000 		end of line.
-01xx 		string (ASCIIZ) has to be copied into storage.
-02xx		decimal/exponential sequence (ASCIIZ)
-2000-3FFF 	01tt ttnn nnnn nnnn : 16 types 1024 keywords
-4000-7FFF 	14 bit numeric data.
-8000-FFFF	1attwwww  wwwwwwww 	identifier encoded 2 x 6 bit chars, a array follows 
-								tt 00=default 01=int 10=float 11=string
+General commands and specific syntax markers like TO STEP
 
+The sections are differentiated by constants ; LUT only exists for the first.
+(If we get there, $FC80-$FCxx will be allocated for horrible things like EXP())
+
+Memory functions
+================
+Change program line.
+To start
+To next
+To Line Number
+Read
+Increment Ptr.
